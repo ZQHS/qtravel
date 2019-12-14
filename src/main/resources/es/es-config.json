@@ -1,0 +1,20 @@
+{
+  "config": {
+    "cluster.name": "qf-es",
+    "client.transport.sniff": true
+  },
+  "address": [
+    {
+      "ip": "10.0.88.242",
+      "port": 9300
+    },
+    {
+      "ip": "10.0.88.243",
+      "port": 9300
+    },
+    {
+      "ip": "10.0.88.244",
+      "port": 9300
+    }
+  ]
+}
