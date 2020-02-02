@@ -1,0 +1,46 @@
+package com.qf.bigdata.realtime.flink.streaming.assigner
+
+import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO._
+import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks
+import org.apache.flink.streaming.api.watermark.Watermark
+
+
+/**
+  * 订单业务事件时间辅助器
+  * @param maxOutOfOrderness 最大延迟时间
+  */
+class OrdersPeriodicAssigner(maxOutOfOrderness :Long) extends AssignerWithPeriodicWatermarks[OrderDetailData]{
+
+  //当前时间戳
+  var currentMaxTimestamp :Long = java.lang.Long.MIN_VALUE
+
+
+
+  /**
+    * 水印生成
+    * @return
+    */
+  override def getCurrentWatermark: Watermark ={
+    var waterMark :Long = java.lang.Long.MIN_VALUE
+    if(currentMaxTimestamp != java.lang.Long.MIN_VALUE){
+      waterMark = currentMaxTimestamp - maxOutOfOrderness
+    }
+    new Watermark(waterMark)
+  }
+
+
+  /**
+    * 事件时间提取
+    * @param element
+    * @param previousElementTimestamp
+    * @return
+    */
+  override def extractTimestamp(element: OrderDetailData, previousElementTimestamp: Long): Long = {
+    //事件时间
+    val eventTime = element.ct
+    currentMaxTimestamp = Math.max(eventTime, currentMaxTimestamp)
+
+    //println(s"""QRTimeOrdersPeriodicAssigner.extractTimestamp et=[${eventTime}], currentMaxTimestamp=[${currentMaxTimestamp}]""")
+    eventTime
+  }
+}

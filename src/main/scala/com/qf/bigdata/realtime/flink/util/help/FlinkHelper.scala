@@ -1,24 +1,29 @@
 package com.qf.bigdata.realtime.flink.util.help
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import com.qf.bigdata.realtime.constant.TravelConstant
-import com.qf.bigdata.realtime.flink.batch.ReleaseBatchJob.LOG
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
+import com.qf.bigdata.realtime.flink.schema.UserLogsKSchema
+import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.UserLogData
 import com.qf.bigdata.realtime.flink.util.es.ESConfigUtil
 import com.qf.bigdata.realtime.flink.util.es.ESConfigUtil.ESConfigHttpHost
-import com.qf.bigdata.realtime.util.json.{JsonMapperUtil, JsonUtil}
-import org.apache.flink.api.common.functions.RuntimeContext
-import org.apache.flink.api.common.serialization.SimpleStringSchema
+import com.qf.bigdata.realtime.util.PropertyUtil
+import org.apache.flink.api.common.restartstrategy.RestartStrategies
+import org.apache.flink.api.common.serialization.{DeserializationSchema, SimpleStringSchema}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.jdbc.JDBCInputFormat
 import org.apache.flink.api.java.typeutils.RowTypeInfo
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.CheckpointingMode
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
-import org.apache.flink.api.scala._
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, KafkaDeserializationSchema}
+import org.apache.flink.streaming.api.scala.{AsyncDataStream, DataStream, StreamExecutionEnvironment}
+import org.apache.flink.streaming.api.scala.async.AsyncFunction
+import org.apache.flink.types.Row
 import org.slf4j.{Logger, LoggerFactory}
+import org.apache.flink.api.scala._
+import org.apache.flink.streaming.connectors.kafka.internals.KafkaDeserializationSchemaWrapper
 
 object FlinkHelper {
 
@@ -45,7 +50,7 @@ object FlinkHelper {
       env.enableCheckpointing(checkPointInterval, CheckpointingMode.EXACTLY_ONCE)
 
       //flink服务重启机制
-      //env.setRestartStrategy()
+      env.setRestartStrategy(RestartStrategies.fixedDelayRestart(QRealTimeConstant.RESTART_ATTEMPTS,QRealTimeConstant.RESTART_DELAY_BETWEEN_ATTEMPTS))
 
       //flink
       //senv.setStateBackend()
@@ -53,7 +58,7 @@ object FlinkHelper {
     }catch{
       case ex:Exception => {
         println(s"FlinkHelper create flink context occur exception：msg=$ex")
-        LOG.error(ex.getMessage, ex)
+        logger.error(ex.getMessage, ex)
       }
     }
     env
@@ -73,10 +78,9 @@ object FlinkHelper {
 
     //创建消费者和消费策略
     val kafkaConsumer : FlinkKafkaConsumer[String] = new FlinkKafkaConsumer[String](topic, schema, properties)
-
-
     kafkaConsumer
   }
+
 
 
 
@@ -119,6 +123,23 @@ object FlinkHelper {
 
 
   /**
+    * 维度数据加载
+    * @param env
+    * @param sql
+    * @param fieldTypes
+    * @return
+    */
+  def createOffLineDataStream(env: StreamExecutionEnvironment, sql:String, fieldTypes: Seq[TypeInformation[_]]):DataStream[Row] = {
+    //JDBC属性
+    val mysqlDBProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.MYSQL_CONFIG_URL)
+    val jdbcInputFormat : JDBCInputFormat= FlinkHelper.createJDBCInputFormat(mysqlDBProperties, sql, fieldTypes)
+    val jdbcDataStream :DataStream[Row] = env.createInput(jdbcInputFormat)
+    jdbcDataStream
+  }
+
+
+
+  /**
     * 创建jdbc数据源输入格式
     * @param properties
     * @param query
@@ -137,6 +158,8 @@ object FlinkHelper {
   }
 
 
+
+
   /**
     * ES集群地址
     * @return
@@ -147,41 +170,27 @@ object FlinkHelper {
 
 
   /**
-    * ES Sink输出(与版本有关)
-    * @param index
+    * 字符拼凑
+    * @param sep
+    * @param params
     * @return
     */
-//  def createESSink(index:String) : ElasticsearchSink[String] =  {
-//    //ES集群
-//    val esConfig :ESConfigHttpHost = getESCluster()
-//    val httpHosts :java.util.ArrayList[HttpHost] = esConfig.transportAddresses
-//
-//    //ES输出数据处理函数
-//    val esSinkFunction = new ElasticsearchSinkFunction[String]{
-//
-//      import org.elasticsearch.action.index.IndexRequest
-//      import org.elasticsearch.client.Requests
-//
-//      //创建索引
-//      def createIndexRequest(element: String): IndexRequest = {
-//        //ES6 source函数要求参数为偶数即Map结构
-//        //val elementMap :java.util.Map[String,String] = JsonUtil.json2object(element, classOf[java.util.Map[String,String]])
-//
-//        val elementMap :java.util.Map[String,String] = JsonMapperUtil.readValue(element, classOf[java.util.Map[String,String]])
-//
-//        Requests.indexRequest.index(index).create(true)
-//           .`type`(index).source(elementMap)
-//      }
-//
-//      //向索引添加数据
-//      override def process(element: String, ctx: RuntimeContext, indexer: RequestIndexer): Unit = {
-//        val indexedReq = createIndexRequest(element)
-//        indexer.add(indexedReq)
-//      }
-//    }
-//    val esSinkBuilder = new ElasticsearchSink.Builder[String](httpHosts,esSinkFunction)
-//    esSinkBuilder.build()
-//  }
+  def concat(sep:String, params:String*):String ={
+    val paramCount = params.length
+    var index = 1
+    val result :StringBuffer = new StringBuffer()
+    for(param <- params){
+      if(index != paramCount){
+        result.append(param).append(sep)
+      }else{
+        result.append(param)
+      }
+    }
+    result.toString
+  }
+
+
+
 
 
 }

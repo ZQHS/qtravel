@@ -3,15 +3,14 @@ package com.qf.bigdata.realtime.util.json;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializeConfig;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.google.gson.Gson;
 import com.qf.bigdata.realtime.util.CommonUtil;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by hp on 2017/5/1.
@@ -26,11 +25,59 @@ public class JsonUtil implements Serializable{
 
     public static final String DEF_ES_DATEFORMATZ = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
+
+    public static final Gson gson = new Gson();
+
+
+    /**
+     * json -> list
+     * @param json
+     * @return
+     */
+    public static List<String> gJson2List(String json) {
+        List<String> result = new ArrayList<String>();
+        JSONArray jarray = JSON.parseArray(json);
+        if(!jarray.isEmpty()){
+            result = jarray.toJavaList(String.class);
+        }
+        return result;
+    }
+
     /**
      * obj -> json
      * @param obj
      * @return
      */
+    public static String gObject2Json(Object obj) {
+        String json = gson.toJson(obj, obj.getClass());
+        return json;
+    }
+
+
+
+    /**
+     * obj -> json
+     * @param obj
+     * @return
+     */
+    public static Map<String,Object> gObject2Map(Object obj) {
+        String json = gson.toJson(obj, obj.getClass());
+        Map<String,Object> result = gson.fromJson(json,Map.class);
+        return result;
+    }
+
+
+    /**
+     * obj -> json
+     * @param obj
+     * @return
+     */
+    public static String object2jsonConfig(Object obj) {
+        //JSON.DEFFAULT_DATE_FORMAT = "yyyy-MM-dd"; 全局日期格式化
+        SerializeConfig config = new SerializeConfig();
+        return JSON.toJSONString(obj, config);
+    }
+
     public static String object2json(Object obj) {
         //JSON.DEFFAULT_DATE_FORMAT = "yyyy-MM-dd"; 全局日期格式化
         return JSON.toJSONString(obj);
@@ -201,17 +248,20 @@ public class JsonUtil implements Serializable{
 
     public static void main(String[] args){
 
-        String json = CommonUtil.file2String("schema/p1.json");
 
+        String json = "[\"P40\",\"P46\",\"P28\",\"P62\"]";
+        List<String> list = gJson2List(json);
+        System.out.println(list);
 
+        //String json = CommonUtil.file2String("schema/p1.json");
         //Map data = JsonUtil.json2object4MapSingle(json);
 
-        Map data = JsonUtil.json2object4MapCascade("",json,false);
+        //Map data = JsonUtil.json2object4MapCascade("",json,false);
 
         //Map data2 = JsonUtil.json2object(json, Map.class);
-        System.out.println(data);
+        //System.out.println(data);
 
-        System.out.println("ok");
+        //System.out.println("ok");
 
     }
 

@@ -4,7 +4,7 @@ import com.qf.bigdata.realtime.bean.{ReleaseBean, SourcesBean}
 import com.qf.bigdata.realtime.constant.{CommonConstant, TravelConstant}
 import com.qf.bigdata.realtime.enumes.SourceEnum
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
-import com.qf.bigdata.realtime.flink.functions.QFunctions.{QFContainFilterFun, QFReleaseMapFun, ToCaseClassMapFun}
+import com.qf.bigdata.realtime.flink.batch.functions.QFunctions.{QFContainFilterFun, QFReleaseMapFun, ToCaseClassMapFun}
 import com.qf.bigdata.realtime.flink.util.help.MetaDataHelper
 import com.qf.bigdata.realtime.util.{CommonUtil}
 import org.apache.flink.api.common.operators.base.JoinOperatorBase.JoinHint

@@ -5,11 +5,11 @@ import java.util.List;
 
 public enum EventActionEnum {
 
-    PRODUCT_KEEP("101", "产品收藏"),
-    PRODUCT_CS("102", "产品客服"),
-    PRODUCT_SHARE("103", "产品分享"),
-    PRODUCT_COMMENT("104", "产品点评"),
-    PRODUCT_PREFERENTIAL("105", "产品领劵");
+    PRODUCT_KEEP("101", "收藏"),
+    PRODUCT_APPLAUD("102", "点赞"),
+    PRODUCT_SHARE("103", "分享"),
+    PRODUCT_COMMENT("104", "点评"),
+    PRODUCT_CS("105", "客服");
 
 
     private String code;
@@ -23,10 +23,9 @@ public enum EventActionEnum {
     public static List<String> getEventActions(){
         List<String> targetActions = Arrays.asList(
                 PRODUCT_KEEP.code,
-                PRODUCT_CS.code,
                 PRODUCT_SHARE.code,
                 PRODUCT_COMMENT.code,
-                PRODUCT_PREFERENTIAL.code
+                PRODUCT_APPLAUD.code
                 );
         return targetActions;
     }

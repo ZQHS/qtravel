@@ -1,7 +1,6 @@
-package com.qf.bigdata.releasetime.flink.streaming.sink
+package com.qf.bigdata.realtime.flink.streaming.sink
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.qf.bigdata.realtime.constant.TravelConstant
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.util.es.ES6ClientUtil
 import com.qf.bigdata.realtime.util.json.JsonUtil
@@ -15,7 +14,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 
 /**
-  * 自定义ES Sink
+  * 自定义ES Sink(数据元素以json字符串形式可以通用)
   * 明细数据供使用方查询
   */
 class CommonESSink(indexName:String) extends RichSinkFunction[String] {
@@ -47,19 +46,18 @@ class CommonESSink(indexName:String) extends RichSinkFunction[String] {
       //参数校验
       val checkResult: String = checkData(value)
       if (StringUtils.isNotBlank(checkResult)) {
-        //日志记录
         logger.error("Travel.ESRecord.sink.checkData.err{}", checkResult)
         return
       }
 
       //记录信息
-      val record :java.util.Map[String,String] = JsonUtil.json2object(value, classOf[java.util.Map[String,String]])
+      val record :java.util.Map[String,Object] = JsonUtil.json2object(value, classOf[java.util.Map[String,Object]])
 
-      //会话ID
-      val sid = record.get(QRealTimeConstant.KEY_SID)
+      //esID
+      val eid :String = record.get(QRealTimeConstant.KEY_ES_ID).toString
 
       //索引名称、类型名称
-      handleData(indexName, indexName, sid, record)
+      handleData(indexName, indexName, eid, record)
 
     }catch{
       case ex: Exception => logger.error(ex.getMessage)
@@ -74,7 +72,7 @@ class CommonESSink(indexName:String) extends RichSinkFunction[String] {
     * @param value
     */
   def handleData(idxName :String, idxTypeName :String, esID :String,
-                 value: java.util.Map[String,String]): Unit ={
+                 value: java.util.Map[String,Object]): Unit ={
     val indexRequest = new IndexRequest(idxName, idxName, esID).source(value)
     val response = transportClient.prepareUpdate(idxName, idxName, esID)
       .setRetryOnConflict(QRealTimeConstant.ES_RETRY_NUMBER)
@@ -108,40 +106,6 @@ class CommonESSink(indexName:String) extends RichSinkFunction[String] {
     if(null == value){
       msg = "kafka.value is empty"
     }
-
-    //转换为Map结构
-    val record :java.util.Map[String,String] = JsonUtil.json2object(value, classOf[java.util.Map[String,String]])
-
-    //会话ID
-    val sid = record.get(QRealTimeConstant.KEY_SID)
-    if(null == sid){
-      msg = "Travel.ESSink.sid  is null"
-    }
-
-    //设备号
-    val device = record.get(QRealTimeConstant.KEY_USER_DEVICE)
-    if(null == device){
-      msg = "Travel.ESSink.device  is null"
-    }
-
-    //行为类型
-    val action = record.get(QRealTimeConstant.KEY_ACTION)
-    if(null == action){
-      msg = "Travel.ESSink.action  is null"
-    }
-
-    //行为类型
-    val eventTyoe = record.get(QRealTimeConstant.KEY_EVENT_TYPE)
-    if(null == eventTyoe){
-      msg = "Travel.ESSink.eventtype  is null"
-    }
-
-    //时间
-    val ctNode = record.get(TravelConstant.CT)
-    if(null == ctNode){
-      msg = "Travel.ESSink.ct is null"
-    }
-
     msg
   }
 

@@ -1,6 +1,7 @@
 package com.qf.bigdata.realtime.util.kafka;
 
 import com.qf.bigdata.realtime.constant.TravelConstant;
+import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant;
 import com.qf.bigdata.realtime.util.zookeeper.ZKClientUtil;
 import kafka.admin.AdminUtils;
 import kafka.utils.ZkUtils;
@@ -283,7 +284,7 @@ public class KafkaUtil {
         int zkSessionTimeout = 5000;
         int zkConnTimeout = 5000;
 
-        String topic = TravelConstant.TOPIC_RELEASE_FLINK;
+
 
         int partitions = KAFKA_PARTITIONS_DEFCOUNT;
         int replication = KAFKA_REPLICATIONS_DEFCOUNT;
@@ -294,20 +295,12 @@ public class KafkaUtil {
         //kafkaUtil.existTopic(topic);
 
         //创建
+        String topic = "topic_orders_ods1";
         List<String> topicList = new ArrayList<String>();
         topicList.add(topic);
-
-        //kafkaUtil.deleteTopic(BeeConstant.TOPIC_TEST);
-       kafkaUtil.createTopic(topic, partitions, replication);
-
-
-//        for(String t : topicList){
-//            //kafkaUtil.createTopic(t, partitions, replication);
-//        }
-
-
-        //kafkaUtil.deleteTopic(BeeConstant.TOPIC_TESTPERSIST);
-        //kafkaUtil.createTopic(BeeConstant.TOPIC_TESTPERSIST, partitions, replication);
+        for(String t : topicList){
+            //kafkaUtil.createTopic(t, partitions, replication);
+        }
 
 
         String group = "test";
@@ -316,13 +309,6 @@ public class KafkaUtil {
         //删除
         //List<String> topicList = new ArrayList<String>();
 
-//        topicList.add(BeeConstant.TOPIC_TEST);
-//////        topicList.add(BeeConstant.TOPIC_BIKE);
-//////        topicList.add(BeeConstant.TOPIC_BIKED);
-//////        topicList.add(BeeConstant.TOPIC_BATTERY);
-//        for(String t : topicList){
-//            kafkaUtil.deleteTopic(t);
-//        }
 
 
         //列表

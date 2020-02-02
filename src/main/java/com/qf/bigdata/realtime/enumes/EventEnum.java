@@ -34,7 +34,15 @@ public enum EventEnum {
     public static List<String> getInterActiveEvents(){
         List<String> events = Arrays.asList(
                 CLICK.code,
-                INPUT.code,
+                VIEW.code,
+                SLIDE.code
+        );
+        return events;
+    }
+
+    public static List<String> getViewListEvents(){
+        List<String> events = Arrays.asList(
+                VIEW.code,
                 SLIDE.code
         );
         return events;

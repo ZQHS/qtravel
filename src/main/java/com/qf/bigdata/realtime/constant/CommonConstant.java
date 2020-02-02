@@ -18,6 +18,7 @@ public class CommonConstant implements Serializable {
 
     public static final String FORMATTER_YYYYMMDD = "yyyyMMdd";
     public static final String FORMATTER_YYYYMMDD_MID = "yyyy-MM-dd";
+    public static final String FORMATTER_YYYYMMDDHH = "yyyyMMddHH";
     public static final String FORMATTER_YYYYMMDDHHMMDD = "yyyyMMddHHmmss";
 
 
