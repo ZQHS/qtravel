@@ -24,7 +24,7 @@
 
 
 
-用户预订时间分布
+用户预订偏好分布
 
 ![](pic\travel_user_preorder_time.png)
 
@@ -3325,6 +3325,58 @@ viewDStream.addSink(viewKafkaProducer)
 
 
 
+#### 常见指标
+
+注释：下面所说的更多是从技术出发在不同行业场景中所体现的共性的需求点，大家尽量举一反三应用在自己包装的行业项目中。
+
+```
+(1) 运营类指标：实时数据报表
+用户粘性统计： 
+	用户启动数据统计(以APP启动或WEB登录为准)
+	
+分时段累计日活DAU(可按具体业务划分：旅游产品、票务、酒店住宿等)
+	基于小时级别逐步统计DAU（可基于Redis|ES）
+	
+	
+(2) 主营业务之数据实时分析
+实时业务数据聚合统计(可按具体业务(旅游产品、票务、酒店住宿等)下的子业务进行划分)
+	基于小时级别进行开窗统计，实时结果输出Sink（可基于Redis|ES|Druid）
+	示例：
+		实时统计旅游产品的业务数据PV、UV、费用等等
+		实时统计旅游产品的浏览日志PV、UV等等
+	  
+(3) 实时业务数据多维聚合统计
+	基于小时级别进行开窗统计，基于kylin进行多维数据分析
+	示例：
+	多维度【用户性别、用户年龄段、用户地区、实时时段(小时级别，需要二次加工)】
+		实时统计旅游产品的业务数据PV、UV、费用等等
+		实时统计旅游产品的浏览日志PV、UV等等
+
+(4) 个性化推荐营销(实时场景：基于用户的实时偏好)
+	例如用户浏览旅游产品、酒店信息时可通过相似用户进行相关推荐或将实时热门产品进行实时推荐
+	
+(5) 实时场景下的活动效果
+	实时统计优惠活动下的产品浏览统计、下单统计
+
+(6) 实时场景下的排名及统计效果
+	实时场景下的某些维度下的分类统计和TopN
+	例如
+		旅游产品下的不同时段内旅游产品类型(周边游等)的PV、UV统计及排名
+		旅游产品下的不同时段内评价统计及排名
+		旅游产品下的不同时段内分享统计及排名
+		所选酒店的不同时段内旅游产品类型(周边游等)的PV、UV统计及排名
+		所选酒店的不同时段内评价统计及排名
+		所选酒店的不同时段内分享统计及排名
+```
+
+
+
+
+
+
+
+
+
 #### 基于窗口数据的统计
 
 ##### 订单事实数据统计
@@ -3741,7 +3793,7 @@ class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTra
 
 ```
 1 数据源
-  订单统计结果
+  订单明细数据
   
 2 根据需求来看仅仅依靠Flink提供的默认窗口方式不足以满足(本质是内置的窗口触发器)，故需要自定义实现触发器来满足数据量和时间条件上的先后关系Trigger
 
@@ -3751,21 +3803,25 @@ class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTra
 
 窗口统计过程(局部代码)
 
-详细代码参考：com.qf.bigdata.realtime.flink.streaming.agg.orders.OrdersDetailAggHandler之handleOrdersAggWindowWithTriggerJob
+详细代码参考：com.qf.bigdata.realtime.flink.streaming.agg.orders.OrdersStatisHandler
+
+
+
+数量触发：OrdersStatisHandler的handleOrdersStatis4CountJob
 
 ```scala
  /**
-  * 5 开窗聚合操作
- */
-val windowCount = 10000
-val maxCount = 100
-val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.keyBy(
-     (detail:OrderDetailData) => OrderDetailAggDimData(detail.userRegion, detail.traffic)
- )
-.window(TumblingEventTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_SIZE)))
-        .trigger(new OrdersStatisTrigger(10, 100l))
-        .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
-        .aggregate(new OrderDetailTimeAggFun(), new OrderDetailTimeWindowFun())
+        * 5 综合统计
+        */
+val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
+        (detail:OrderDetailData) => {
+          val hourTime = CommonUtil.formatDate4Timestamp(detail.ct, QRealTimeConstant.FORMATTER_YYYYMMDDHH)
+          OrderDetailSessionDimData(detail.traffic, hourTime)
+        }
+      )
+        .window(TumblingEventTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
+        .trigger(new OrdersStatisCountTrigger(maxCount))
+        .process(new OrderStatisWindowProcessFun())
 ```
 
 
@@ -3774,28 +3830,175 @@ val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.key
 
 ```scala
 /**
-  * 旅游产品订单业务自定义触发器
+  * 旅游产品订单业务自定义数量触发器
+  * 基于计数器触发任务处理
   */
-class OrdersStatisTrigger(maxCount:Long, maxInterval :Long) extends Trigger[OrderDetailData, TimeWindow]{
+class OrdersStatisCountTrigger(maxCount:Long) extends Trigger[OrderDetailData, TimeWindow]{
 
-  val logger :Logger = LoggerFactory.getLogger("OrdersAggTrigger")
+  val logger :Logger = LoggerFactory.getLogger("OrdersStatisCountTrigger")
 
-  var accCount:Long = 1l
+  //统计数据状态：计数
+  val TRIGGER_ORDER_STATE_ORDERS_DESC = "TRIGGER_ORDER_STATE_ORDERS_DESC"
+  var ordersCountStateDesc :ValueStateDescriptor[Long] = new ValueStateDescriptor[Long](TRIGGER_ORDER_STATE_ORDERS_DESC, createTypeInformation[Long])
+  var ordersCountState :ValueState[Long] = _
 
+
+
+  /**
+    * 每条数据被添加到窗口时调用
+    * @param element
+    * @param timestamp
+    * @param window
+    * @param ctx
+    * @return
+    */
   override def onElement(element: OrderDetailData, timestamp: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
-    logger.info("===OrdersStatisTrigger.onElement===window start = {}, window end = {}", window.getStart, window.getEnd)
+    //计数状态
+    ordersCountState = ctx.getPartitionedState(ordersCountStateDesc)
 
-    ctx.registerEventTimeTimer(window.maxTimestamp)
-    if(accCount >= maxCount ){
-      accCount = 0
-      return TriggerResult.FIRE
-    }else{
-      accCount = accCount + 1
+    //当前数据
+    if(ordersCountState.value() == null){
+        ordersCountState.update(QRealTimeConstant.COMMON_NUMBER_ZERO)
     }
+    val curOrders = ordersCountState.value() + 1
+    ordersCountState.update(curOrders)
+
+    //触发条件判断
+    if(curOrders >= maxCount ){
+      this.clear(window, ctx)
+      return TriggerResult.FIRE_AND_PURGE
+    }
+
     return TriggerResult.CONTINUE
   }
 
+
+
+
+  /**
+    * ,当一个已注册的事件时间计时器启动时调用
+    * @param time
+    * @param window
+    * @param ctx
+    * @return
+    */
+  override def onEventTime(time: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
+    return TriggerResult.CONTINUE;
+  }
+
+  /**
+    * 一个已注册的处理时间计时器启动时调用
+    * @param time
+    * @param window
+    * @param ctx
+    * @return
+    */
   override def onProcessingTime(time: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
+    return TriggerResult.FIRE
+  }
+
+  /**
+    * 执行任何需要清除的相应窗口
+    * @param window
+    * @param ctx
+    */
+  override def clear(window: TimeWindow, ctx: Trigger.TriggerContext): Unit = {
+    //计数清零
+    ctx.getPartitionedState(ordersCountStateDesc).clear()
+
+    //删除处理时间的定时器
+    ctx.deleteProcessingTimeTimer(window.maxTimestamp())
+  }
+
+  override def canMerge: Boolean = {return true}
+
+  /**
+    * 合并窗口
+    * @param window
+    * @param ctx
+    */
+  override def onMerge(window: TimeWindow, ctx: Trigger.OnMergeContext): Unit = {
+    println(s"""OrdersStatisCountTrigger.onMerge=${CommonUtil.formatDate4Def(new Date())}""")
+
+    val windowMaxTimestamp :Long = window.maxTimestamp();
+    if (windowMaxTimestamp > ctx.getCurrentProcessingTime()) {
+      ctx.registerProcessingTimeTimer(windowMaxTimestamp);
+    }
+  }
+}
+```
+
+
+
+时间触发：OrdersStatisHandler的handleOrdersStatis4ProcceTimeJob
+
+```scala
+ /**
+  * 5 综合统计
+  */
+val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
+        (detail:OrderDetailData) => {
+          val hourTime = CommonUtil.formatDate4Timestamp(detail.ct, QRealTimeConstant.FORMATTER_YYYYMMDDHH)
+          OrderDetailSessionDimData(detail.traffic, hourTime)
+        }
+      )
+        .window(TumblingProcessingTimeWindows.of(Time.days(QRealTimeConstant.COMMON_NUMBER_ONE),  Time.hours(-8))) //每天5分钟触发
+        .trigger(new OrdersStatisTimeTrigger(maxInternal))
+        .process(new OrderStatisWindowProcessFun())
+```
+
+
+
+自定义触发器
+
+```scala
+/**
+  * 旅游产品订单业务自定义时间触发器
+  * 基于处理时间间隔时长触发任务处理
+  */
+class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData, TimeWindow]{
+
+  val logger :Logger = LoggerFactory.getLogger("OrdersStatisTimeTrigger")
+
+  //统计数据状态：计数
+  val TRIGGER_ORDER_STATE_TIME_DESC = "TRIGGER_ORDER_STATE_TIME_DESC"
+  var ordersTimeStateDesc :ValueStateDescriptor[Long] = new ValueStateDescriptor[Long](TRIGGER_ORDER_STATE_TIME_DESC, createTypeInformation[Long])
+  var ordersTimeState :ValueState[Long] = _
+
+
+  /**
+    * 元素处理
+    * @param element
+    * @param timestamp
+    * @param window
+    * @param ctx
+    * @return
+    */
+  override def onElement(element: OrderDetailData, timestamp: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
+    //计数状态
+    ordersTimeState = ctx.getPartitionedState(ordersTimeStateDesc)
+
+    //处理时间间隔
+    val maxIntervalTimestamp :Long = Time.of(maxInterval,TimeUnit.MINUTES).toMilliseconds
+    val curProcessTime :Long = ctx.getCurrentProcessingTime
+
+    //当前处理时间到达或超过上次处理时间+间隔后触发本次窗口操作
+    var nextProcessingTime = TimeWindow.getWindowStartWithOffset(curProcessTime, 0, maxIntervalTimestamp) + maxIntervalTimestamp
+    ctx.registerProcessingTimeTimer(nextProcessingTime)
+
+    ordersTimeState.update(nextProcessingTime)
+    return TriggerResult.CONTINUE
+  }
+
+  /**
+    * 一个已注册的处理时间计时器启动时调用
+    * @param time
+    * @param window
+    * @param ctx
+    * @return
+    */
+  override def onProcessingTime(time: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
+    println(s"""OrdersStatisTimeTrigger.onProcessingTime=${CommonUtil.formatDate4Def(new Date())}""")
     return TriggerResult.FIRE;
   }
 
@@ -3803,12 +4006,32 @@ class OrdersStatisTrigger(maxCount:Long, maxInterval :Long) extends Trigger[Orde
     return TriggerResult.CONTINUE;
   }
 
+  /**
+    * 执行任何需要清除的相应窗口
+    * @param window
+    * @param ctx
+    */
   override def clear(window: TimeWindow, ctx: Trigger.TriggerContext): Unit = {
-    ctx.deleteProcessingTimeTimer(window.maxTimestamp)
+    //删除处理时间的定时器
+    ctx.deleteProcessingTimeTimer(ordersTimeState.value())
   }
 
+  /**
+    * 合并窗口
+    * @param window
+    * @param ctx
+    */
+  override def onMerge(window: TimeWindow, ctx: Trigger.OnMergeContext): Unit = {
+    println(s"""OrdersStatisTimeTrigger.onMerge=${CommonUtil.formatDate4Def(new Date())}""")
+    val windowMaxTimestamp = window.maxTimestamp()
+    if(windowMaxTimestamp > ctx.getCurrentWatermark){
+      ctx.registerProcessingTimeTimer(windowMaxTimestamp)
+    }
+  }
 }
 ```
+
+
 
 
 
@@ -3817,7 +4040,7 @@ class OrdersStatisTrigger(maxCount:Long, maxInterval :Long) extends Trigger[Orde
 ###### 需求点
 
 ```
-解决以【userRegion:用户所属地区、traffic:出游交通方式】做维度，【orders:订单数量, maxFee:最高消费, totalFee:消费总数, members:旅游人次】做度量的订单固定间隔N分钟统计指标或近N分钟统计指标。
+解决以【traffic:出游交通方式、时间维度 小时级 hourTime】做维度，【orders:订单数量, maxFee:最高消费, totalFee:消费总数, members:旅游人次】做度量的订单固定间隔N分钟统计指标或近N分钟统计指标。
 ```
 
 ###### 技术分析
@@ -3960,7 +4183,6 @@ class OrderStatisWindowProcessFun extends ProcessWindowFunction[OrderDetailData,
 
 ```
 解决以【productType:产品种类、toursimType:产品类型】做维度，【startWindowTime:开始时间, endWindowTime:结束时间, orders:订单数, users:用户人数, totalFee:消费总数】做度量的自定义触发、计算处理。
-
 ```
 
 ###### 技术分析
@@ -3969,8 +4191,7 @@ class OrderStatisWindowProcessFun extends ProcessWindowFunction[OrderDetailData,
 1 数据源
   基于订单事实明细数据来完成
   
-2 结果为时间导向的计算需求，考虑以时间窗口进行统计计算 
-  基于事件时间的滚动窗口(TumblingEventTimeWindows)统计，如每N分钟统计结果（实际事件发生时间）
+2 结果为实时流式数据自定义窗口数据划分、自定义触发方式、自定义数据处理过程，是Flink提供的最自由、最灵活的方式，理论上解决绝大部分相关需求。
 
 3 数据输出
   如果结果要实时展示，那么可以结合grafana做展示，那么输出数据要输出到es、druid之中，当然它们也支持客户端交互式查询需求并有较好的性能。
@@ -4105,48 +4326,6 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
 
 
 
-(1) 运营类指标：实时数据报表
-用户粘性统计： 
-	用户启动数据统计(以APP启动或WEB登录为准)
-	用户启动数据环比
-	
-分时段累计日活DAU(可按具体业务划分：旅游产品、票务、酒店住宿等)
-	基于小时级别逐步统计DAU（可基于Redis|ES）
-	
-	
-(2) 主营业务之数据实时分析
-实时业务数据聚合统计(可按具体业务(旅游产品、票务、酒店住宿等)下的子业务进行划分)
-	基于小时级别进行开窗统计，实时结果输出Sink（可基于Redis|ES|Druid）
-	示例：
-		实时统计旅游产品的业务数据PV、UV、费用等等
-		实时统计旅游产品的浏览日志PV、UV等等
-		实时旅游产品的环比
-	  
-实时业务数据多维聚合统计
-	基于小时级别进行开窗统计，基于kylin进行多维数据分析
-	示例：
-	多维度【用户性别、用户年龄段、用户地区、实时时段(小时级别，需要二次加工)】
-		实时统计旅游产品的业务数据PV、UV、费用等等
-		实时统计旅游产品的浏览日志PV、UV等等
-
-
-
-(1) 个性化推荐营销(实时场景：基于用户的实时偏好)
-	例如用户浏览旅游产品、酒店信息时可通过相似用户进行相关推荐或将实时热门产品进行实时推荐
-	
-(2) 实时场景下的活动效果
-	实时统计优惠活动下的产品浏览统计、下单统计
-
-(3) 实时场景下的排名及统计效果
-	实时场景下的某些维度下的分类统计和TopN
-	例如
-		旅游产品下的不同时段内旅游产品类型(周边游等)的PV、UV统计及排名
-		旅游产品下的不同时段内评价统计及排名
-		旅游产品下的不同时段内分享统计及排名
-		所选酒店的不同时段内旅游产品类型(周边游等)的PV、UV统计及排名
-		所选酒店的不同时段内评价统计及排名
-		所选酒店的不同时段内分享统计及排名
-
 
 
 
@@ -4177,12 +4356,11 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
 1 数据源
   基于订单事实明细数据来完成
   
-2 结果为时间导向的计算需求，考虑以时间窗口进行统计计算 
-  基于事件时间的滚动窗口(TumblingEventTimeWindows)统计，如每N分钟统计结果（实际事件发生时间）
+2 StreamingFileSink 流式文件数据输出源
 
-3 数据输出
-  如果结果要实时展示，那么可以结合grafana做展示，那么输出数据要输出到es、druid之中，当然它们也支持客户端交互式查询需求并有较好的性能。
-  如果要高效的交互式查询，除了上面2种方案，也可以输出到clickhouse
+3 数据输出文件系统(Flink支持的)
+  * 本地文件 file:///data/xxxx
+  * HDFS | S3 hdfs://hdfsCluster/data/xxx
 ```
 
 
@@ -4226,8 +4404,6 @@ val hdfsSink: StreamingFileSink[String] = StreamingFileSink
 launchRowDStream.addSink(hdfsSink)
 
 ```
-
-
 
 
 

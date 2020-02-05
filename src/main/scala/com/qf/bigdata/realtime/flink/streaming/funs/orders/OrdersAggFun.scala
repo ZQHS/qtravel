@@ -325,7 +325,6 @@ object OrdersAggFun {
       customerUserState.update(userKeys)
 
       //数量触发条件：maxCount
-
       if(totalOrders >= maxCount){
         val orderDetailStatisData = OrderWideCustomerStatisData(productType, toursimType, startWindowTime, endWindowTime,totalOrders, users, totalFee)
 

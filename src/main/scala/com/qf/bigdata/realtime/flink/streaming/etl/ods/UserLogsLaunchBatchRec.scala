@@ -23,6 +23,7 @@ import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, KafkaDes
 import org.slf4j.{Logger, LoggerFactory}
 import org.apache.flink.api.scala._
 import org.apache.flink.formats.parquet.avro.ParquetAvroWriters
+import org.apache.kafka.common.utils.Time
 
 /**
   * 实时数据采集

@@ -186,10 +186,10 @@ object OrdersWideAsyncHander {
         kafkaSerSchema,
         kafkaProductConfig,
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE)
-      //
-      //    // 加入kafka摄入时间
-      //    travelKafkaProducer.setWriteTimestampToKafka(true)
-      //    asyncDS.addSink(travelKafkaProducer)
+
+      // 加入kafka摄入时间
+      travelKafkaProducer.setWriteTimestampToKafka(true)
+      asyncDS.addSink(travelKafkaProducer)
 
 
       env.execute(appName)

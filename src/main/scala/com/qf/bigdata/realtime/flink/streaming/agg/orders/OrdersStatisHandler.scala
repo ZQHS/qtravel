@@ -78,7 +78,6 @@ object OrdersStatisHandler {
       /**
         * 5 综合统计
         */
-      val maxInterval :Long = Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE).getSize
       val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
         (detail:OrderDetailData) => {
           //val hourTime2 = TimeWindow.getWindowStartWithOffset(detail.ct, 0, Time.minutes(30).toMilliseconds)

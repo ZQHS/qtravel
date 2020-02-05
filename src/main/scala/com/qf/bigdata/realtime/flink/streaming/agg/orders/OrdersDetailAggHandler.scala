@@ -124,93 +124,6 @@ object OrdersDetailAggHandler {
 
 
 
-  /**
-    * 实时开窗聚合数据
-    */
-  def handleOrdersAggWindowWithTriggerJob(appName:String, fromTopic:String, toTopic:String, groupID:String, indexName:String):Unit = {
-
-    try{
-      /**
-        * 1 Flink环境初始化
-        *   流式处理的时间特征依赖(使用事件时间)
-        */
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-      env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
-
-      /**
-        * 2 kafka流式数据源
-        *   kafka消费配置参数
-        *   kafka消费策略
-        */
-      val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
-      consumerProperties.setProperty("group.id", groupID)
-
-      //kafka消费+消费策略
-      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
-      kafkaConsumer.setStartFromLatest()
-
-      /**
-        * 3 订单数据
-        *   原始明细数据转换操作
-        */
-      val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-      val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
-      //orderDetailDStream.print("orderDStream---:")
-
-      /**
-        * 4 设置事件时间提取器及水位计算
-        *   固定范围的水位指定(注意时间单位)
-        */
-      val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-      orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
-      //orderDetailDStream.print("order.orderDStream---")
-
-      /**
-        * 5 开窗聚合操作
-        */
-      val windowCount = 10000
-      val maxCount = 100
-      val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.keyBy(
-        (detail:OrderDetailData) => OrderDetailAggDimData(detail.userRegion, detail.traffic)
-      )
-        .window(TumblingEventTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_SIZE)))
-        .trigger(new OrdersStatisTrigger(10, 100l))
-        //.allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
-        .aggregate(new OrderDetailTimeAggFun(), new OrderDetailTimeWindowFun())
-      aggDStream.print("order.aggDStream---:")
-
-
-      /**
-        * 6 聚合数据写入ES
-        */
-      val esDStream:DataStream[String] = aggDStream.map(
-        (value : OrderDetailTimeAggDimMeaData) => {
-          val result :mutable.Map[String,AnyRef] = JsonUtil.gObject2Map(value)
-          val eid = value.userRegion+CommonConstant.BOTTOM_LINE+value.traffic
-          result +=(QRealTimeConstant.KEY_ES_ID -> eid)
-          JsonUtil.gObject2Json(result)
-        }
-      )
-
-
-      /**
-        * 7 数据输出Sink
-        *   自定义ESSink输出
-        */
-      val orderAggESSink = new CommonESSink(indexName)
-      esDStream.addSink(orderAggESSink)
-
-      env.execute(appName)
-    }catch {
-      case ex: Exception => {
-        logger.error("OrdersDetailAggHandler.err:" + ex.getMessage)
-      }
-    }
-
-  }
-
-
   def main(args: Array[String]): Unit = {
     //参数处理
     //    val parameterTool = ParameterTool.fromArgs(args)
@@ -227,10 +140,7 @@ object OrdersDetailAggHandler {
 
 
     //实时处理第二层：开窗统计
-    //handleOrdersAggWindowJob(appName, fromTopic, toTopic, groupID, indexName)
-
-
-    //handleOrdersAggWindowWithTriggerJob(appName, fromTopic, toTopic, groupID, indexName)
+    handleOrdersAggWindowJob(appName, fromTopic, toTopic, groupID, indexName)
 
 
   }
