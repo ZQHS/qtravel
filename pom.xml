@@ -27,6 +27,8 @@
         <commons-io.version>2.4</commons-io.version>
         <commons-csv.version>1.6</commons-csv.version>
 
+        <rocksdb>6.1.2</rocksdb>
+
         <!-- bigdata   -->
         <scala.version>2.11.8</scala.version>
         <zk.client.version>0.11</zk.client.version>
@@ -133,6 +135,14 @@
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
             <version>${protobuf.version}</version>
+            <scope>${scope}</scope>
+        </dependency>
+
+        <!-- rocksdbjni -->
+        <dependency>
+            <groupId>org.rocksdb</groupId>
+            <artifactId>rocksdbjni</artifactId>
+            <version>${rocksdb}</version>
             <scope>${scope}</scope>
         </dependency>
 
