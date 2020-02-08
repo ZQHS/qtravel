@@ -12,17 +12,23 @@ import java.util.Map;
 /**
  * RocksDB工具类
  */
+/**
+ * RocksDB工具类
+ */
 public class RocksDBHelper implements Serializable {
 
     private static RocksDB dbInstance = null;
     private static Options options = null;
-    //private static String dbPath = "D:/qfBigWorkSpace/qtravel/src/main/resources/rocksdb/qf";
-    private static String dbPath = "/opt/framework/rocksdb/rocksdb_data/qf_rocksdb";
+    //private static String dbPath = "/opt/framework/rocksdb/rocksdb_data/qf_rocksdb";
 
+    //公共参数
     public static Boolean CREATE_IF_MISSING = true;
     public static Integer BUFFER_SIZE_WRITE = 8;
     public static Integer BUFFER_SIZE_WRITE_MAXNUMBER = 5;
     public static Integer BACKGROUND_COMPACTIONS_MAX = 10;
+
+    //列簇
+    public static String CF_DESC_QF = "qf_cf";
 
 
     static {
@@ -94,9 +100,7 @@ public class RocksDBHelper implements Serializable {
         if(null == dbInstance){
             dbInstance = RocksDB.open(options, dbPath);
         }
-
-        RocksDB db = RocksDB.open(options, dbPath);
-        return db;
+        return dbInstance;
     }
 
 
@@ -104,68 +108,27 @@ public class RocksDBHelper implements Serializable {
      * 操作测试
      * @throws Exception
      */
-    public static void operate() throws Exception {
-        RocksDB db = connect(dbPath);
-
-        db.put("hello".getBytes(), "world".getBytes());
-        byte[] value = db.get("hello".getBytes());
-        System.out.format("Get('hello') = %s\n", new String(value));
-
-        final String str = db.getProperty("rocksdb.stats");
-        assert (str != null && !str.equals(""));
-    }
-
-
-    /**
-     * 批量操作
-     * @throws Exception
-     */
-    public static void batch() throws Exception {
-        RocksDB db = connect(dbPath);
-        WriteOptions writeOpt = new WriteOptions();
-        for (int i = 10; i <= 19; ++i) {
-            final WriteBatch batch = new WriteBatch();
-            for (int j = 10; j <= 19; ++j) {
-                batch.put(String.format("%dx%d", i, j).getBytes(), String.format("%d", i * j).getBytes());
-            }
-            db.write(writeOpt, batch);
-        }
-    }
+//    public static ColumnFamilyHandle createColumnFamily(RocksDB db, String cfDesc) throws Exception {
+//        //System.out.println("==============createColumnFamily===============");
+//        ColumnFamilyHandle cfHandle = null;
+//        if(null != db && StringUtils.isNotEmpty(cfDesc)){
+//            ColumnFamilyOptions cfOptions = new ColumnFamilyOptions();
+//            ColumnFamilyDescriptor cfDesciptor = new ColumnFamilyDescriptor(cfDesc.getBytes(), cfOptions);
+//            cfHandle = db.createColumnFamily(cfDesciptor);
+//        }
+//        return cfHandle;
+//    }
 
 
     /**
      * 读操作测试
      * @throws Exception
      */
-    public static void readOperate() throws Exception {
-        ReadOptions readOptions = new ReadOptions().setFillCache(false);
-        RocksDB db = connect(dbPath);
-        db.put("hello".getBytes(), "world".getBytes());
-        byte[] value = db.get("hello".getBytes());
-        System.out.format("Get('hello') = %s\n", new String(value));
-
-        value = db.get(readOptions, "world".getBytes());
-        assert (value == null);
-
-        final byte[] insufficientArray = new byte[10];
-        final byte[] enoughArray = new byte[50];
-        int len;
-        final byte[] testKey = "asdf".getBytes();
-        final byte[] testValue = "asdfghjkl;'?><MNBVCXZQWERTYUIOP{+_)(*&^%$#@".getBytes();
-        db.put(testKey, testValue);
-        len = db.get(testKey, insufficientArray);
-        assert (len > insufficientArray.length);
-        len = db.get("asdfjkl;".getBytes(), enoughArray);
-        assert (len == RocksDB.NOT_FOUND);
-        len = db.get(testKey, enoughArray);
-        assert (len == testValue.length);
-
-        len = db.get(readOptions, testKey, insufficientArray);
-        assert (len > insufficientArray.length);
-        len = db.get(readOptions, "asdfjkl;".getBytes(), enoughArray);
-        assert (len == RocksDB.NOT_FOUND);
-        len = db.get(readOptions, testKey, enoughArray);
-        assert (len == testValue.length);
+    public static ReadOptions readOperate(boolean fillCache) throws Exception {
+        //System.out.println("==============readOperate===============");
+        ReadOptions readOptions = new ReadOptions()
+                .setFillCache(fillCache);
+        return readOptions;
     }
 
 
@@ -173,40 +136,112 @@ public class RocksDBHelper implements Serializable {
      * 写操作测试
      * @throws Exception
      */
-    public static void writeOperate() throws Exception {
-        ReadOptions readOptions = new ReadOptions().setFillCache(false);
-        RocksDB db = connect(dbPath);
-        db.put("hello".getBytes(), "world".getBytes());
-        byte[] value = db.get("hello".getBytes());
-        System.out.format("Get('hello') = %s\n", new String(value));
-
-        value = db.get(readOptions, "world".getBytes());
-        assert (value == null);
-
-        final byte[] insufficientArray = new byte[10];
-        final byte[] enoughArray = new byte[50];
-        int len;
-        final byte[] testKey = "asdf".getBytes();
-        final byte[] testValue = "asdfghjkl;'?><MNBVCXZQWERTYUIOP{+_)(*&^%$#@".getBytes();
-        db.put(testKey, testValue);
-        len = db.get(testKey, insufficientArray);
-        assert (len > insufficientArray.length);
-        len = db.get("asdfjkl;".getBytes(), enoughArray);
-        assert (len == RocksDB.NOT_FOUND);
-        len = db.get(testKey, enoughArray);
-        assert (len == testValue.length);
-
-        len = db.get(readOptions, testKey, insufficientArray);
-        assert (len > insufficientArray.length);
-        len = db.get(readOptions, "asdfjkl;".getBytes(), enoughArray);
-        assert (len == RocksDB.NOT_FOUND);
-        len = db.get(readOptions, testKey, enoughArray);
-        assert (len == testValue.length);
+    public static WriteOptions writeOperate(boolean sync, boolean disableWAL, boolean ignoreMissCF) throws Exception {
+        //System.out.println("==============writeOperate===============");
+        WriteOptions writeOpts = new WriteOptions()
+                .setSync(sync)
+                .setDisableWAL(disableWAL);
+        if(ignoreMissCF){
+            writeOpts = writeOpts.setIgnoreMissingColumnFamilies(ignoreMissCF);
+        }
+        return writeOpts;
     }
 
 
+
+    /**
+     * 关闭连接
+     * @throws Exception
+     */
+    public static void close(RocksDB dbInstance) throws Exception {
+        //System.out.println("==============close===============");
+        if(null != dbInstance){
+            dbInstance.close();
+        }
+    }
+
+
+
+    /**
+     * 操作测试
+     * @throws Exception
+     */
+    public static void operate(String dbPath) throws Exception {
+        System.out.println("==============operate===============");
+        RocksDB db = connect(dbPath);
+
+        //写参数
+        boolean sync = true;
+        boolean disableWAL = false;
+        boolean ignoreMissCF = false;
+        WriteOptions writeOptions = writeOperate(sync, disableWAL, ignoreMissCF);
+
+
+        //读参数
+        boolean fillCache = true;
+        ReadOptions readOptions = readOperate(fillCache);
+
+        //1 写数据
+        String singleKey = "bigdata";
+        String singleValue = "hadoop,spark,flink";
+        db.put(singleKey.getBytes(), singleValue.getBytes());
+
+        String qfSingleKey = "qf";
+        String qfSingleValue = "h5,java,bigdata";
+        db.put(writeOptions, qfSingleKey.getBytes(), qfSingleValue.getBytes());
+
+
+        //数据迭代器
+        RocksIterator iterator = db.newIterator();
+        for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+            iterator.status();
+            String key = new String(iterator.key());
+            String value = new String(iterator.value());
+            System.out.println("key=" + key + ", value=" + value);
+        }
+
+        //2 读数据
+        //final String stats = db.getProperty("rocksdb.stats");
+        //System.out.format("rocksdb.stats = %s", stats);
+
+        byte[] rocksDBSingleValue = db.get(singleKey.getBytes());
+        System.out.format("rocksdb.singleKey = %s", new String(rocksDBSingleValue));
+
+        byte[] rocksDBQFCFSingleValue = db.get(readOptions, qfSingleKey.getBytes());
+        System.out.format("rocksdb.singleKey = %s", new String(rocksDBQFCFSingleValue));
+
+        //3 批量操作
+        WriteBatch batch = new WriteBatch();
+        for (int i = 1; i <= 3; ++i) {
+            String key = String.format("%d",i);
+            batch.put(key.getBytes(), key.getBytes());
+            db.write(writeOptions, batch);
+        }
+
+        for (int i = 1; i <= 3; ++i) {
+            String key = String.format("%d",i);
+            String value = new String(db.get(key.getBytes()));
+            System.out.format("rocksdb.batch  [key= %s,value=%s] \n", key, value);
+        }
+
+        //关闭连接
+        close(dbInstance);
+    }
+
+
+
+
+
     public static void main(final String[] args) throws Exception {
-        operate();
+        //String method = args[0];
+        //String dbPath = args[1];
+
+        String dbPath = "D:\\data\\rocksdb";
+
+        //普通操作
+        operate(dbPath);
+
+
     }
 
 
