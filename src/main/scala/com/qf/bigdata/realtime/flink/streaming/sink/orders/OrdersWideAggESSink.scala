@@ -65,14 +65,17 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
       val productType = value.productType
       val depCode = value.depCode
       val triffic = value.traffic
-      val id = depCode+sep+productType+sep+triffic
+      //val id = depCode+sep+productType+sep+triffic
+      val id = depCode
 
       //加入更新时间
-      val record :java.util.Map[String,Object] = JsonUtil.json2object(orderDataJson, classOf[java.util.Map[String,Object]])
+      val useFields :List[String] = getOrderWideAggUseFields()
+      val sources :java.util.Map[String,Object] = JsonUtil.json2object(orderDataJson, classOf[java.util.Map[String,Object]])
+      val record :java.util.Map[String,Object] = checkUseFields(sources, useFields)
+
 
       //索引名称、类型名称
-      val orderFields :List[String] = getOrderWideAggUseFields()
-      handleData(indexName, indexName, id, record, orderFields)
+      handleData(indexName, indexName, id, record)
 
     }catch{
       case ex: Exception => logger.error(ex.getMessage)
@@ -109,15 +112,13 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
     * @param value
     */
   def handleData(idxName :String, idxTypeName :String, esID :String,
-                 value: mutable.Map[String,Object], fields:List[String]): Unit ={
+                 value: mutable.Map[String,Object]): Unit ={
     //脚本参数赋值
     val params = new java.util.HashMap[String, Object]
     val scriptSb: StringBuilder = new StringBuilder
     //println(s"""value=${value.keys.mkString}""")
     for ((k :String, v:Object) <- value ) { //if(null != k); if(null != v)
       params.put(k, v)
-      //println(s"""kkk==>${k}""")
-
       var s = ""
       if(QRealTimeConstant.KEY_CT.equals(k)) {
         s = "if(ctx._source."+k+" == null){ctx._source."+k+" = params."+k+"} else { if(ctx._source."+k+" < params."+k+" ){ctx._source."+k+" = params."+k+"}}"
@@ -135,10 +136,7 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
       }else if(QRealTimeConstant.POJO_FIELD_MEMBERS.equalsIgnoreCase(k)){
         //累计出行人数
         s = " if(ctx._source."+k+" != null) {ctx._source."+k +"+= params." + k + "} else { ctx._source."+k+" = params."+k+"} "
-
-      } else if(getOrderWideAggUseFields().contains(k)){
-        s = " if(ctx._source."+k+" == null) { ctx._source."+k+" = params."+k+" } "
-      }else if(QRealTimeConstant.POJO_FIELD_ORDERS.equalsIgnoreCase(k)){
+      } else if(QRealTimeConstant.POJO_FIELD_ORDERS.equalsIgnoreCase(k)){
         //s = " ctx._source."+k +" += params."+ k+" "
         s = " if(ctx._source."+k+" != null) { ctx._source."+k+" = params."+k+" } "
       }
@@ -167,12 +165,34 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
     */
   def getOrderWideAggUseFields() : List[String] = {
     var useFields :List[String] = List[String]()
-    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_USERREGION)
-    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_TRAFFIC)
+    //useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_USERREGION)
+    //useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_TRAFFIC)
     useFields = useFields.:+(QRealTimeConstant.POJO_PRODUCT_DEPCODE)
+
+    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_ORDERS)
+    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_MEMBERS)
+    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_FEE_MIN)
+    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_FEE_MAX)
+    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_FEE)
+    useFields = useFields.:+(QRealTimeConstant.KEY_CT)
     useFields
   }
 
+
+  /**
+    * 选择参与计算的维度和度量
+    * @return
+    */
+  def checkUseFields(datas:java.util.Map[String,Object], useFields:java.util.List[String]) : java.util.Map[String,Object] = {
+    val result :java.util.Map[String,Object] = new java.util.HashMap[String,Object]
+    for(field <- useFields){
+      if(datas.containsKey(field)){
+        val value = datas.getOrDefault(field,null)
+        result.put(field, value)
+      }
+    }
+    result
+  }
 
 
 

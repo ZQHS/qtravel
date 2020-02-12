@@ -55,11 +55,12 @@ object UserLogsViewHandler {
           log.action.equalsIgnoreCase(ActionEnum.PAGE_ENTER_H5.getCode) || log.action.equalsIgnoreCase(ActionEnum.PAGE_ENTER_NATIVE.getCode)
         }
       ).map(new UserLogPageViewDataMapFun())
+      viewDStream.print("=======viewDStream==========")
 
 
       //4 写入下游环节ES(具体下游环节取决于平台的技术方案和相关需求,如flink+es技术组合)
-      val viewESSink = new UserLogsViewESSink(indexName)
-      viewDStream.addSink(viewESSink)
+//      val viewESSink = new UserLogsViewESSink(indexName)
+//      viewDStream.addSink(viewESSink)
 
       env.execute(appName)
     }catch {

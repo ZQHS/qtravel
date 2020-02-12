@@ -17,7 +17,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 class UserLogsPageViewKSchema (topic:String) extends KafkaSerializationSchema[UserLogPageViewData] with KafkaDeserializationSchema[UserLogPageViewData]{
 
 
-  val gson : Gson = new Gson()
+
 
 
   /**
@@ -28,6 +28,7 @@ class UserLogsPageViewKSchema (topic:String) extends KafkaSerializationSchema[Us
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): UserLogPageViewData = {
     val key = record.key()
     val value = record.value()
+    val gson : Gson = new Gson()
     val log :UserLogPageViewData = gson.fromJson(new String(value), classOf[UserLogPageViewData])
     log
   }

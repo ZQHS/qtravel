@@ -15,7 +15,7 @@ import org.apache.flink.streaming.api.windowing.windows.{GlobalWindow, TimeWindo
 import org.apache.flink.util.{Collector}
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.windowing.time.Time
-
+import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 /**
@@ -48,7 +48,7 @@ object OrdersAggFun {
       val startWindowTime = window.getStart
       val endWindowTime = window.getEnd
 
-      val owDMData = OrderTrafficDimMeaData(productID, traffic, startWindowTime, endWindowTime, outOrders, outMembers, outFees)
+      val owDMData = OrderTrafficDimMeaData(productID, traffic, startWindowTime, endWindowTime, outOrders, outFees)
       out.collect(owDMData)
     }
   }
@@ -84,7 +84,6 @@ object OrdersAggFun {
       * 获取结果数据
       */
     override def getResult(accumulator: OrderDetailTimeAggMeaData): OrderDetailTimeAggMeaData = {
-      println(s"""OrderDetailTimeAggFun.getResult[${CommonUtil.formatDate4Def(new Date())}] ===> """)
       accumulator
     }
 
@@ -298,6 +297,7 @@ object OrdersAggFun {
       }
       val qProcessWindow :QProcessWindow = customerProcessState.value()
       if(curProcessTime >= qProcessWindow.end){
+        qProcessWindow.start = qProcessWindow.end
         qProcessWindow.end = curProcessTime
       }
       customerProcessState.update(qProcessWindow)
@@ -610,23 +610,6 @@ object OrdersAggFun {
     */
   class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTrafficDimMeaData, OrderTrafficDimMeaData, OrderTrafficDimData, TimeWindow] {
 
-    //状态描述名称
-    val ORDER_TOPN_DESC = "ORDER_TOPN_DESC"
-    var orderTopNState :ListState[OrderTrafficDimMeaData] = _
-    var orderTopNStateDesc :ListStateDescriptor[OrderTrafficDimMeaData] = _
-
-
-    /**
-      * 初始化
-      * @param parameters
-      */
-    override def open(parameters: Configuration): Unit = {
-
-      //状态数据：订单数量
-      orderTopNStateDesc = new ListStateDescriptor[OrderTrafficDimMeaData](ORDER_TOPN_DESC, createTypeInformation[OrderTrafficDimMeaData])
-      orderTopNState = this.getRuntimeContext.getListState(orderTopNStateDesc)
-    }
-
 
   /**
     * 处理数据
@@ -641,12 +624,11 @@ object OrdersAggFun {
 
       for(element :OrderTrafficDimMeaData <- elements){
          val orders = element.orders
-         val members = element.members
          val totalFee = element.totalFee
          val startWindowTime = element.startWindowTime
          val endWindowTime = element.endWindowTime
 
-         val value = new OrderTrafficDimMeaData(productID, traffic, startWindowTime, endWindowTime,orders, members,totalFee)
+         val value = new OrderTrafficDimMeaData(productID, traffic, startWindowTime, endWindowTime,orders, totalFee)
          if(!topNContainer.isEmpty){
            if(topNContainer.size() >= topN){
              val first : OrderTrafficDimMeaData = topNContainer.first()
@@ -658,13 +640,20 @@ object OrdersAggFun {
            }else{
              topNContainer.add(value)
            }
-           topNContainer.add(value)
          }else{
            topNContainer.add(value)
          }
        }
+
+       for(data <- topNContainer){
+         out.collect(data)
+       }
     }
   }
+
+
+
+
 
 
   /**
@@ -681,16 +670,9 @@ object OrdersAggFun {
       val totalFee2 = o2.totalFee
       val totalFeeComp = totalFee1 - totalFee2
 
-      val members1 = o1.members
-      val members2 = o2.members
-      val membersComp = members1 - members2
-
       var result = ordersComp
       if(ordersComp == 0){
         result = totalFeeComp
-        if(totalFeeComp == 0){
-          result = membersComp
-        }
       }
       result.toInt
     }

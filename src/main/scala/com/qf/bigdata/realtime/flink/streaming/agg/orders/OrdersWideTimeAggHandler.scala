@@ -6,7 +6,6 @@ import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.schema.OrderWideGroupKSchema
 import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun._
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO._
-import com.qf.bigdata.realtime.flink.streaming.assigner.OrdersPeriodicAssigner
 import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersAggFun.{OrderWideTimeAggFun, OrderWideTimeWindowFun}
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDimDO.ProductDimDO
 import com.qf.bigdata.realtime.flink.streaming.rdo.typeinformation.QRealTimeDimTypeInformations
@@ -16,7 +15,7 @@ import org.apache.flink.api.common.state.MapStateDescriptor
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
+import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, TumblingProcessingTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
 import org.apache.flink.api.scala._
@@ -38,14 +37,13 @@ object OrdersWideTimeAggHandler {
     * 实时开窗聚合数据
     */
   def handleOrdersWideAggWindowJob(appName:String, fromTopic:String, toTopic:String, groupID:String):Unit = {
-
     try{
       /**
         * 1 Flink环境初始化
         *   流式处理的时间特征依赖(使用事件时间)
         */
       val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
       env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
 
       /**
@@ -78,6 +76,7 @@ object OrdersWideTimeAggHandler {
 
       val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
       kafkaConsumer.setStartFromLatest()
+      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
 
       /**
         * 4 订单数据
@@ -87,44 +86,34 @@ object OrdersWideTimeAggHandler {
       val orderDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
       //orderDStream.print("orderDStream---:")
 
-      /**
-        * 5 设置事件时间提取器及水位计算
-        *    固定周期间隔
-        */
-      val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-      orderDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
-      //orderDStream.print("order.orderDStream---")
-
-
       //状态描述对象
       val productMSDesc = new MapStateDescriptor[String, ProductDimDO](QRealTimeConstant.BC_PRODUCT, createTypeInformation[String], createTypeInformation[ProductDimDO])
       val dimProductBCStream :BroadcastStream[ProductDimDO] = productDS.broadcast(productMSDesc)
 
       /**
-        * 6 旅游产品宽表数据
+        * 5 旅游产品宽表数据
         * 1 产品维度
         * 2 订单数据
         */
       val orderWideGroupDStream :DataStream[OrderWideData] = orderDStream.connect(dimProductBCStream)
         .process(new OrderWideBCFunction(QRealTimeConstant.BC_PRODUCT))
-      orderWideGroupDStream.print("order.orderWideGroupDStream---")
+      //orderWideGroupDStream.print("order.orderWideGroupDStream---")
 
 
 
       /**
-        * 7 开窗聚合操作
+        * 6 开窗聚合操作
         */
       val aggDStream:DataStream[OrderWideTimeAggDimMeaData] = orderWideGroupDStream.keyBy({
         (wide:OrderWideData) => OrderWideAggDimData(wide.productType, wide.toursimType)
       })
-        .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
-        .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
+        .window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
         .aggregate(new OrderWideTimeAggFun(), new OrderWideTimeWindowFun())
       aggDStream.print("order.aggDStream---:")
 
 
       /**
-        * 8 数据输出Kafka
+        * 7 数据输出Kafka
         */
       val orderWideGroupKSerSchema = new OrderWideGroupKSchema(toTopic)
       val kafkaProductConfig = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_PRODUCER_CONFIG_URL)
@@ -134,7 +123,7 @@ object OrdersWideTimeAggHandler {
         kafkaProductConfig,
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE)
 
-      //5 加入kafka摄入时间
+      //加入kafka摄入时间
       travelKafkaProducer.setWriteTimestampToKafka(true)
       aggDStream.addSink(travelKafkaProducer)
 
@@ -158,6 +147,7 @@ object OrdersWideTimeAggHandler {
 
     val appName = "qf.OrdersWideTimeAggHandler"
     val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+
     val toTopic = QRealTimeConstant.TOPIC_ORDER_MID
     val groupID = "group.OrdersWideTimeAggHandler"
 

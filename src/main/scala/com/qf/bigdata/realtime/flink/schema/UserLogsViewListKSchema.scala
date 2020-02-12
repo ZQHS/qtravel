@@ -18,7 +18,7 @@ class UserLogsViewListKSchema(topic:String) extends KafkaSerializationSchema[Use
 
 
 
-  val gson : Gson = new Gson()
+
 
 
   /**
@@ -29,6 +29,7 @@ class UserLogsViewListKSchema(topic:String) extends KafkaSerializationSchema[Use
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): UserLogViewListData = {
     val key = record.key()
     val value = record.value()
+    val gson : Gson = new Gson()
     val log :UserLogViewListData = gson.fromJson(new String(value), classOf[UserLogViewListData])
     log
   }

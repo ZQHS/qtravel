@@ -43,7 +43,7 @@ object OrdersCustomerStatisHandler {
         *   流式处理的时间特征依赖(使用事件时间)
         */
       val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
       env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
 
       /**
@@ -55,6 +55,7 @@ object OrdersCustomerStatisHandler {
       consumerProperties.setProperty("group.id", groupID)
       val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
       kafkaConsumer.setStartFromLatest()
+      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
 
       /**
         * 3 订单数据
@@ -65,15 +66,7 @@ object OrdersCustomerStatisHandler {
       //orderDetailDStream.print(s"order.orderDetailDStream[${CommonUtil.formatDate4Def(new Date())}]---:")
 
       /**
-        * 4 设置事件时间提取器及水位计算
-        *   固定范围的水位指定(注意时间单位)
-        */
-      val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-      orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
-
-
-      /**
-        * 5 异步维表数据提取
+        * 4 异步维表数据提取
         *   旅游产品维度数据
         */
       val productDimFieldTypes :List[TypeInformation[_]] = QRealTimeDimTypeInformations.getProductDimFieldTypeInfos()
@@ -97,7 +90,7 @@ object OrdersCustomerStatisHandler {
       val dimProductBCStream :BroadcastStream[ProductDimDO] = productDS.broadcast(productMSDesc)
 
       /**
-        * 6 旅游产品宽表数据
+        * 5 旅游产品宽表数据
         * 1 产品维度
         * 2 订单数据
         */
@@ -105,7 +98,7 @@ object OrdersCustomerStatisHandler {
         .process(new OrderWideBCFunction(QRealTimeConstant.BC_PRODUCT))
 
       /**
-        * 7综合统计
+        * 6 综合统计
         */
       val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.keyBy(
         (wide:OrderWideData) => {
@@ -134,15 +127,19 @@ object OrdersCustomerStatisHandler {
     //    val fromTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_FROM)
     //    val toTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_TO)
     val appName = "qf.handleOrdersStatisCustomerJob"
-    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val toTopic = QRealTimeConstant.TOPIC_ORDER_DM_STATIS
+    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    val fromTopic = "test_ods"
+
+    //val toTopic = QRealTimeConstant.TOPIC_ORDER_DM_STATIS
+    val toTopic = "test_statis2"
+
     val groupID = "group.handleOrdersStatisCustomerJob"
     val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_CUSTOMER_STATIS
 
 
     //定量触发窗口计算
-    val maxCount :Long = 20
-    val maxInterval :Long = 5
+    val maxCount :Long = 200
+    val maxInterval :Long = 3
     handleOrdersWideStatisCustomerJob(appName, fromTopic, toTopic, groupID, indexName, maxCount, maxInterval)
 
 

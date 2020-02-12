@@ -43,8 +43,6 @@ object UserLogsViewListHandler {
       val kafkaConsumer : FlinkKafkaConsumer[UserLogViewListData] = new FlinkKafkaConsumer[UserLogViewListData](fromTopic, schema, consumerProperties)
       kafkaConsumer.setStartFromLatest()
 
-
-
       //3 实时流数据集合操作
       val dStream :DataStream[UserLogViewListData] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
       //产品列表浏览
@@ -87,8 +85,8 @@ object UserLogsViewListHandler {
 
     val appName = "qf.UserLogsViewListHandler"
     val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
-    val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_VIEWLIST
 
+    val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_VIEWLIST
 
     //明细数据输出kafka
     handleLogsETL4KafkaJob(appName, fromTopic, toTopic)

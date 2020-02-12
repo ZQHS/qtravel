@@ -28,6 +28,11 @@
         <commons-csv.version>1.6</commons-csv.version>
 
         <rocksdb>6.1.2</rocksdb>
+        <parquet-hadoop>1.10.1</parquet-hadoop>
+        <parquet-avro>1.10.1</parquet-avro>
+        <avro.version>1.9.0</avro.version>
+        <jedis.version>3.1.0</jedis.version>
+        <druid.version>1.1.12</druid.version>
 
         <!-- bigdata   -->
         <scala.version>2.11.8</scala.version>
@@ -231,6 +236,49 @@
         </dependency>
 
 
+        <!-- hadoop -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>${scope}</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>protobuf-java</artifactId>
+                    <groupId>com.google.protobuf</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>${scope}</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>jsp-api</artifactId>
+                    <groupId>javax.servlet.jsp:</groupId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>log4j-over-slf4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>${scope}</scope>
+        </dependency>
+
+
         <!-- flink scala api -->
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -311,30 +359,38 @@
         </dependency>
 
 
+
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-cep_2.11</artifactId>
+            <artifactId>flink-cep-scala_2.11</artifactId>
             <version>${flink.version}</version>
             <scope>${scope}</scope>
         </dependency>
 
         <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>${avro.version}</version>
+            <scope>${scope}</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.parquet</groupId>
             <artifactId>parquet-hadoop</artifactId>
-            <version>1.8.1</version>
+            <version>${parquet-hadoop}</version>
+            <scope>${scope}</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.parquet</groupId>
             <artifactId>parquet-avro</artifactId>
-            <version>1.8.1</version>
+            <version>${parquet-avro}</version>
+            <scope>${scope}</scope>
         </dependency>
-
 
         <!-- redis -->
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
-            <version>3.1.0</version>
+            <version>${jedis.version}</version>
             <scope>${scope}</scope>
         </dependency>
 
@@ -348,7 +404,7 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid</artifactId>
-            <version>1.1.12</version>
+            <version>${druid.version}</version>
             <scope>${scope}</scope>
         </dependency>
 
@@ -417,6 +473,27 @@
                 </plugins>
             </build>
         </profile>
+
+        <profile>
+            <id>test</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>${project.basedir}/src/main/resources-local</directory>
+                        <filtering>true</filtering>
+                    </resource>
+                </resources>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
 
@@ -431,16 +508,16 @@
                     <artifactId>maven-shade-plugin</artifactId>
                     <version>3.1.0</version>
                     <executions>
-                        <!-- 投放目标客户主题数据
+                        <!-- 旅游产品订单明细数据处理
                         <execution>
-                            <id>DWReleaseCustomerJob</id>
+                            <id>OrdersDetailHandlerJob</id>
                             <phase>package</phase>
                             <goals>
                                 <goal>shade</goal>
                             </goals>
                             <configuration>
                                 <shadedArtifactAttached>true</shadedArtifactAttached>
-                                <shadedClassifierName>DWReleaseCustomerJob</shadedClassifierName>
+                                <shadedClassifierName>OrdersDetailHandlerJob</shadedClassifierName>
                                 <filters>
                                     <filter>
                                         <artifact>*:*</artifact>
@@ -458,13 +535,12 @@
                                     </transformer>
                                     <transformer
                                             implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                        <mainClass>com.qf.bigdata.release.etl.release.dw.DWReleaseCustomer</mainClass>
+                                        <mainClass>com.qf.bigdata.realtime.flink.streaming.etl.dw.orders.OrdersDetailHandler</mainClass>
                                     </transformer>
                                 </transformers>
                             </configuration>
                         </execution>
                     -->
-
                     </executions>
                 </plugin>
             </plugins>

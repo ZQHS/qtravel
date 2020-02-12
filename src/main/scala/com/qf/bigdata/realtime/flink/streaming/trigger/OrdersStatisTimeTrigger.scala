@@ -58,7 +58,6 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
     * @return
     */
   override def onProcessingTime(time: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
-    println(s"""OrdersStatisTimeTrigger.onProcessingTime=${CommonUtil.formatDate4Def(new Date())}""")
     return TriggerResult.FIRE;
   }
 
@@ -82,7 +81,6 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
     * @param ctx
     */
   override def onMerge(window: TimeWindow, ctx: Trigger.OnMergeContext): Unit = {
-    println(s"""OrdersStatisTimeTrigger.onMerge=${CommonUtil.formatDate4Def(new Date())}""")
     val windowMaxTimestamp = window.maxTimestamp()
     if(windowMaxTimestamp > ctx.getCurrentWatermark){
       ctx.registerProcessingTimeTimer(windowMaxTimestamp)

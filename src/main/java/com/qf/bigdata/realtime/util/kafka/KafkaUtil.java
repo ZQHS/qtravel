@@ -284,8 +284,6 @@ public class KafkaUtil {
         int zkSessionTimeout = 5000;
         int zkConnTimeout = 5000;
 
-
-
         int partitions = KAFKA_PARTITIONS_DEFCOUNT;
         int replication = KAFKA_REPLICATIONS_DEFCOUNT;
 
@@ -295,7 +293,7 @@ public class KafkaUtil {
         //kafkaUtil.existTopic(topic);
 
         //创建
-        String topic = "topic_orders_ods1";
+        String topic = "topic_log_action_view"; //topic_orders_dw topic_orders_dw_wide
         List<String> topicList = new ArrayList<String>();
         topicList.add(topic);
         for(String t : topicList){

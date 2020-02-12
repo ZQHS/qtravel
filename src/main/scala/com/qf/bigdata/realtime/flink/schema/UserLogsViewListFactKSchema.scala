@@ -17,7 +17,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 class UserLogsViewListFactKSchema(topic:String) extends KafkaSerializationSchema[UserLogViewListFactData] with KafkaDeserializationSchema[UserLogViewListFactData] {
 
 
-  val gson : Gson = new Gson()
+
 
 
   /**
@@ -28,6 +28,7 @@ class UserLogsViewListFactKSchema(topic:String) extends KafkaSerializationSchema
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): UserLogViewListFactData = {
     val key = record.key()
     val value = record.value()
+    val gson : Gson = new Gson()
     val log :UserLogViewListFactData = gson.fromJson(new String(value), classOf[UserLogViewListFactData])
     log
   }

@@ -18,7 +18,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
   */
 class OrderStatisKSchema(topic:String) extends KafkaSerializationSchema[OrderTrafficDimMeaData] with KafkaDeserializationSchema[OrderTrafficDimMeaData] {
 
-  val gson : Gson = new Gson()
+
 
   /**
     * 反序列化
@@ -28,6 +28,7 @@ class OrderStatisKSchema(topic:String) extends KafkaSerializationSchema[OrderTra
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): OrderTrafficDimMeaData = {
     val key = record.key()
     val value = record.value()
+    val gson : Gson = new Gson()
     val log :OrderTrafficDimMeaData = gson.fromJson(new String(value), classOf[OrderTrafficDimMeaData])
     log
   }

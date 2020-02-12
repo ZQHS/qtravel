@@ -4,9 +4,9 @@ import java.util.Properties
 
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.streaming.assigner.OrdersPeriodicAssigner
-import com.qf.bigdata.realtime.flink.streaming.etl.ods.UserLogsViewHandler.logger
+import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersAggFun.{OrderWideTimeAggFun, OrderWideTimeWindowFun}
 import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun.{OrderDetailDataMapFun, OrderWideBCFunction}
-import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderDetailData, OrderWideData}
+import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderDetailData, OrderWideAggDimData, OrderWideData, OrderWideTimeAggDimMeaData}
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDimDO.ProductDimDO
 import com.qf.bigdata.realtime.flink.streaming.rdo.typeinformation.QRealTimeDimTypeInformations
 import com.qf.bigdata.realtime.flink.streaming.sink.orders.OrdersWideAggESSink
@@ -18,6 +18,8 @@ import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.datastream.BroadcastStream
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
+import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 import org.apache.flink.types.Row
 import org.slf4j.{Logger, LoggerFactory}
@@ -109,7 +111,6 @@ object OrdersWideAgg2ESHandler {
       orderWideDStream.print("order.orderWideDStream---")
 
 
-
       /**
         * 7 数据输出Sink
         *   自定义ESSink输出
@@ -136,6 +137,7 @@ object OrdersWideAgg2ESHandler {
 
     val appName = "flink.OrdersWideAgg2ESHandler"
     val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+
     val groupID = "group.OrdersWideAgg2ESHandler"
     val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_WIDE_AGG
 

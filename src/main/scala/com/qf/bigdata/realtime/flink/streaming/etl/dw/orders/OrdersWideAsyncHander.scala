@@ -6,10 +6,9 @@ import java.util.concurrent.TimeUnit
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.schema.OrderWideKSchema
 import com.qf.bigdata.realtime.flink.streaming.assigner.OrdersPeriodicAssigner
-import com.qf.bigdata.realtime.flink.streaming.etl.dw.orders.OrdersWideDetail2ESHandler.logger
 import com.qf.bigdata.realtime.flink.streaming.funs.common.QRealtimeCommFun._
 import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun._
-import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderDetailData, OrderMWideData, OrderWideData}
+import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderDetailData, OrderDetailSimData, OrderMWideData, OrderWideData}
 import com.qf.bigdata.realtime.flink.util.help.FlinkHelper
 import com.qf.bigdata.realtime.util.PropertyUtil
 import org.apache.flink.api.scala.createTypeInformation
@@ -125,7 +124,6 @@ object OrdersWideAsyncHander {
     * 实时开窗聚合数据
     */
   def handleOrdersWideAsyncJob(appName:String, fromTopic:String, toTopic:String, groupID:String):Unit = {
-
     try{
       /**
         * 1 Flink环境初始化
@@ -210,12 +208,14 @@ object OrdersWideAsyncHander {
     //    val toTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_TO)
 
     val appName = "flink.OrdersWideAsyncHander"
-    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val toTopic = QRealTimeConstant.TOPIC_ORDER_DW_WIDE
+    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    val fromTopic = "test_ods"
+    //val toTopic = QRealTimeConstant.TOPIC_ORDER_DW_WIDE
+    val toTopic = "test_dw_wide_multi"
     val groupID = "group.OrdersWideAsyncHander"
 
     //1 维表数据异步处理形成宽表
-    handleOrdersWideAsyncJob(appName, fromTopic, toTopic, groupID)
+    //handleOrdersWideAsyncJob(appName, fromTopic, toTopic, groupID)
 
     //2 多维表数据异步处理形成宽表
     handleOrdersMWideAsyncJob(appName, fromTopic, toTopic, groupID)

@@ -101,7 +101,7 @@ object OrdersWideDetail2ESHandler {
       //        }
       val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
       orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
-      //orderDStream.print("order.orderDStream---")
+      orderDetailDStream.print("order.orderDStream---")
 
 
       //状态描述对象
@@ -117,15 +117,13 @@ object OrdersWideDetail2ESHandler {
         .process(new OrderWideBCFunction(QRealTimeConstant.BC_PRODUCT))
       //orderWideDStream.print("order.orderWideDStream---")
 
-
-
       /**
         * 6 聚合数据写入ES
         */
       val esDStream:DataStream[String] = orderWideDStream.map(
         (value : OrderWideData) => {
           val result :java.util.Map[String,Object] = JsonUtil.gObject2Map(value)
-          val eid = value.userRegion+CommonConstant.BOTTOM_LINE+value.traffic
+          val eid = value.orderID
           result +=(QRealTimeConstant.KEY_ES_ID -> eid)
 
           val addJson = JsonUtil.object2json(result)
@@ -151,6 +149,8 @@ object OrdersWideDetail2ESHandler {
   }
 
 
+
+
   def main(args: Array[String]): Unit = {
     //参数处理
 //    val parameterTool = ParameterTool.fromArgs(args)
@@ -160,6 +160,7 @@ object OrdersWideDetail2ESHandler {
 
     val appName = "flink.OrdersWideDetail2ESHandler"
     val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+
     val groupID = "group.OrdersWideDetail2ESHandler"
     val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_WIDE_DETAIL
 

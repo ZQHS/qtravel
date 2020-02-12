@@ -6,6 +6,8 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializeConfig;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.LongSerializationPolicy;
 import com.qf.bigdata.realtime.util.CommonUtil;
 import org.apache.commons.lang3.StringUtils;
 
@@ -26,7 +28,12 @@ public class JsonUtil implements Serializable{
     public static final String DEF_ES_DATEFORMATZ = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
 
-    public static final Gson gson = new Gson();
+    public static Gson gson = null;
+    static {
+        GsonBuilder gb = new GsonBuilder().serializeNulls().setDateFormat("yyyy-MM-dd HH:mm:ss");
+        gb.setLongSerializationPolicy(LongSerializationPolicy.STRING);
+        gson = gb.create();
+    }
 
 
     /**
@@ -63,6 +70,16 @@ public class JsonUtil implements Serializable{
     public static Map<String,Object> gObject2Map(Object obj) {
         String json = gson.toJson(obj, obj.getClass());
         Map<String,Object> result = gson.fromJson(json,Map.class);
+        return result;
+    }
+
+    /**
+     * json -> map
+     * @param str
+     * @return
+     */
+    public static Map<String,Object> gJson2Map(String str) {
+        Map<String,Object> result = gson.fromJson(str,Map.class);
         return result;
     }
 
@@ -120,6 +137,8 @@ public class JsonUtil implements Serializable{
         JSON.DEFFAULT_DATE_FORMAT = DEF_DATEFORMAT;
         return JSON.parseObject(json, cls);
     }
+
+
 
 
     public static JSONObject json2object(String json) {
@@ -252,6 +271,10 @@ public class JsonUtil implements Serializable{
         String json = "[\"P40\",\"P46\",\"P28\",\"P62\"]";
         List<String> list = gJson2List(json);
         System.out.println(list);
+
+        String str = "{\"targetID\":\"P25\"}";
+        Map<String,Object> datas = gJson2Map(str);
+        System.out.println(datas.toString());
 
         //String json = CommonUtil.file2String("schema/p1.json");
         //Map data = JsonUtil.json2object4MapSingle(json);

@@ -35,14 +35,13 @@ object OrdersStatisHandler {
     * 基于数据量作为触发条件进行窗口分组聚合
     */
   def handleOrdersStatis4CountJob(appName:String, fromTopic:String, toTopic:String, groupID:String, indexName:String,maxCount:Long):Unit = {
-
     try{
       /**
         * 1 Flink环境初始化
         *   流式处理的时间特征依赖(使用事件时间)
         */
       val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
       env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
 
       /**
@@ -52,8 +51,10 @@ object OrdersStatisHandler {
         */
       val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
       consumerProperties.setProperty("group.id", groupID)
+
       val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
       kafkaConsumer.setStartFromLatest()
+      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
 
       /**
         * 3 订单数据
@@ -63,17 +64,6 @@ object OrdersStatisHandler {
       val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
       //orderDetailDStream.print(s"order.orderDetailDStream[${CommonUtil.formatDate4Def(new Date())}]---:")
 
-      /**
-        * 4 设置事件时间提取器及水位计算
-        *   固定范围的水位指定(注意时间单位)
-        */
-      val orderBoundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[OrderDetailData](Time.milliseconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
-        override def extractTimestamp(element: OrderDetailData): Long = {
-          element.ct
-        }
-      }
-      //val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-      orderDetailDStream.assignTimestampsAndWatermarks(orderBoundedAssigner)
 
       /**
         * 5 综合统计
@@ -86,7 +76,7 @@ object OrdersStatisHandler {
           OrderDetailSessionDimData(detail.traffic, hourTime)
         }
       )
-        .window(TumblingEventTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
+        .window(TumblingProcessingTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
         .trigger(new OrdersStatisCountTrigger(maxCount))
         .process(new OrderStatisWindowProcessFun())
       statisDStream.print(s"order.statisDStream[${CommonUtil.formatDate4Def(new Date())}]---:")
@@ -128,7 +118,6 @@ object OrdersStatisHandler {
     * 基于数据量作为触发条件进行窗口分组聚合
     */
   def handleOrdersStatis4ProcceTimeJob(appName:String, fromTopic:String, toTopic:String, groupID:String, indexName:String,maxInternal:Long):Unit = {
-
     try{
       /**
         * 1 Flink环境初始化
@@ -147,6 +136,7 @@ object OrdersStatisHandler {
       consumerProperties.setProperty("group.id", groupID)
       val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
       kafkaConsumer.setStartFromLatest()
+      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
 
       /**
         * 3 订单数据
@@ -156,20 +146,9 @@ object OrdersStatisHandler {
       val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
       //orderDetailDStream.print(s"order.orderDetailDStream[${CommonUtil.formatDate4Def(new Date())}]---:")
 
-      /**
-        * 4 设置事件时间提取器及水位计算
-        *   固定范围的水位指定(注意时间单位)
-        */
-      val orderBoundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[OrderDetailData](Time.milliseconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
-        override def extractTimestamp(element: OrderDetailData): Long = {
-          element.ct
-        }
-      }
-      //val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-      orderDetailDStream.assignTimestampsAndWatermarks(orderBoundedAssigner)
 
       /**
-        * 5 综合统计
+        * 4 综合统计
         */
       val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
         (detail:OrderDetailData) => {
@@ -221,17 +200,18 @@ object OrdersStatisHandler {
     //    val toTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_TO)
     val appName = "qf.OrdersStatisHandler"
     val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+
     val toTopic = QRealTimeConstant.TOPIC_ORDER_DM_STATIS
     val groupID = "group.OrdersStatisHandler"
 
 
     //定量触发窗口计算
-    //val maxCount = 500
-    //val indexName = "travel_orders_count_statis"
-    //handleOrdersStatis4CountJob(appName, fromTopic, toTopic, groupID, indexName,maxCount)
+//    val maxCount = 500
+//    val indexName = "travel_orders_count_statis"
+//    handleOrdersStatis4CountJob(appName, fromTopic, toTopic, groupID, indexName,maxCount)
 
     //定时触发窗口计算
-//    val maxInternal = 5
+//    val maxInternal = 1
 //    val indexName = "travel_orders_time_statis"
 //    handleOrdersStatis4ProcceTimeJob(appName, fromTopic, toTopic, groupID, indexName,maxInternal)
 

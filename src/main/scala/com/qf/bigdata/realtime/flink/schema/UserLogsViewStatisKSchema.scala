@@ -17,7 +17,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 class UserLogsViewStatisKSchema(topic:String) extends KafkaSerializationSchema[UserLogPageViewAggMeanData] with KafkaDeserializationSchema[UserLogPageViewAggMeanData] {
 
 
-  val gson : Gson = new Gson()
+
 
 
   /**
@@ -28,6 +28,7 @@ class UserLogsViewStatisKSchema(topic:String) extends KafkaSerializationSchema[U
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): UserLogPageViewAggMeanData = {
     val key = record.key()
     val value = record.value()
+    val gson : Gson = new Gson()
     val log :UserLogPageViewAggMeanData = gson.fromJson(new String(value), classOf[UserLogPageViewAggMeanData])
     log
   }

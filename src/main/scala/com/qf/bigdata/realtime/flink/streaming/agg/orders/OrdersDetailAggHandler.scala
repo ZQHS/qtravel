@@ -15,12 +15,13 @@ import com.qf.bigdata.realtime.util.PropertyUtil
 import com.qf.bigdata.realtime.util.json.JsonUtil
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
-import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
+import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, TumblingProcessingTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 import org.slf4j.{Logger, LoggerFactory}
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
+import org.apache.flink.streaming.api.windowing.windows.{TimeWindow, Window}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -43,7 +44,7 @@ object OrdersDetailAggHandler {
         *   流式处理的时间特征依赖(使用事件时间)
         */
       val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
       env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
 
       /**
@@ -57,6 +58,7 @@ object OrdersDetailAggHandler {
       //kafka消费+消费策略
       val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
       kafkaConsumer.setStartFromLatest()
+      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
 
       /**
         * 3 订单数据
@@ -66,35 +68,21 @@ object OrdersDetailAggHandler {
       val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
       //orderDetailDStream.print("orderDStream---:")
 
-      /**
-        * 4 设置事件时间提取器及水位计算
-        *   固定范围的水位指定(注意时间单位)
-        */
-      val orderBoundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[OrderDetailData](Time.milliseconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
-        override def extractTimestamp(element: OrderDetailData): Long = {
-          element.ct
-        }
-      }
-
-      //周期间隔
-      val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-      orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
-      //orderDetailDStream.print("order.orderDStream---")
 
       /**
-        * 5 开窗聚合操作
+        * 4 开窗聚合操作
         */
       val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.keyBy(
         (detail:OrderDetailData) => OrderDetailAggDimData(detail.userRegion, detail.traffic)
       )
-        .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
+        .window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
         .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
         .aggregate(new OrderDetailTimeAggFun(), new OrderDetailTimeWindowFun())
-      //aggDStream.print("order.aggDStream---:")
+      aggDStream.print("order.aggDStream---:")
 
 
       /**
-        * 6 聚合数据写入ES
+        * 5 聚合数据写入ES
         */
       val esDStream:DataStream[String] = aggDStream.map(
         (value : OrderDetailTimeAggDimMeaData) => {
@@ -107,11 +95,11 @@ object OrdersDetailAggHandler {
 
 
       /**
-        * 7 数据输出Sink
+        * 6 数据输出Sink
         *   自定义ESSink输出
         */
       val orderAggESSink = new CommonESSink(indexName)
-      esDStream.addSink(orderAggESSink)
+      //esDStream.addSink(orderAggESSink)
 
       env.execute(appName)
     }catch {
@@ -133,6 +121,7 @@ object OrdersDetailAggHandler {
 
     val appName = "qf.OrdersDetailAggHandler"
     val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+
     val toTopic = QRealTimeConstant.TOPIC_ORDER_DM
     val groupID = "group.OrdersDetailAggHandler"
     val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_WIN_STATIS

@@ -42,11 +42,11 @@ public class DBDruid implements Serializable {
 
 
     //初始大小
-    public static final Integer iniSize = 2;
+    public static final Integer iniSize = 5;
     public static final Integer maxActive = 20;
-    public static final Integer minIdle = 2;
-    public static final Integer maxWait = 5 * 1000;
-    public static final Integer abandonedTimeout = 60;
+    public static final Integer minIdle = 5;
+    public static final Integer maxWait = 5 * 10000;
+    public static final Integer abandonedTimeout = 600;
 
     public DruidDataSource getDruidDataSource() throws Exception{
         if(null == dataSource){

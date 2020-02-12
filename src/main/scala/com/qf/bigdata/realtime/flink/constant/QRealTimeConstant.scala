@@ -39,18 +39,22 @@ object QRealTimeConstant {
 
 
   //flink窗口大小
-  val FLINK_WINDOW_SIZE :Long = 5 * 1
-  val FLINK_WINDOW_MAX_SIZE :Long = 60 * 1
+  val FLINK_WINDOW_SIZE :Long = 10L
+  val FLINK_WINDOW_MAX_SIZE :Long = 60L
 
   //flink滑动窗口大小
-  val FLINK_SLIDE_WINDOW_SIZE :Long= 10l
-  val FLINK_SLIDE_INTERVAL_SIZE :Long= 5l
+  val FLINK_SLIDE_WINDOW_SIZE :Long= 10L
+  val FLINK_SLIDE_INTERVAL_SIZE :Long= 5L
 
   //flink检查点间隔
   val FLINK_CHECKPOINT_INTERVAL :Long = 20 * 1000l
 
   //flink延时设置
-  val FLINK_ALLOWED_LATENESS :Long = 10l
+  val FLINK_ALLOWED_LATENESS :Long = 10L
+
+
+  //flink cep
+  val FLINK_CEP_VIEW_BEGIN = "CEP_VIEW_BEGIN"
 
 
   //本地模型下的默认并行度(cpu core)
@@ -88,7 +92,8 @@ object QRealTimeConstant {
 
   val TOPIC_LOG_ACTION_LAUNCH_WARN = "topic_log_action_launch_warn"
 
-  val TOPIC_ORDER_ODS = "topic_orders_ods"
+  val TOPIC_ORDER_ODS = "topic_orders_ods1"
+  val TOPIC_ORDER_DW = "topic_orders_dw"
   val TOPIC_ORDER_DW_WIDE = "topic_orders_dw_wide"
   val TOPIC_ORDER_DM = "topic_orders_dm"
   val TOPIC_ORDER_DM_STATIS = "topic_orders_dm_statis"
@@ -150,8 +155,8 @@ object QRealTimeConstant {
   val FORMATTER_YYYYMMDDHHMMSS: String = "yyyyMMddHHmmss"
 
   //实时采集参数
-  val RM_REC_ROLLOVER_INTERVAL :Long = 15L
-  val RM_REC_INACTIVITY_INTERVAL :Long = 5L
+  val RM_REC_ROLLOVER_INTERVAL :Long = 1L
+  val RM_REC_INACTIVITY_INTERVAL :Long = 1L
   val RM_REC_MAXSIZE :Long = 128L
   val RM_REC_BUCKET_CHECK_INTERVAL :Long = 5L
 

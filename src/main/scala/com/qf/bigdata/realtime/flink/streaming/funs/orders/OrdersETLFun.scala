@@ -65,7 +65,7 @@ object OrdersETLFun {
 
 
       //折扣
-      val hasActivity :String = record.getOrDefault(QRealTimeConstant.KEY_PRODUCT_FEE,"")
+      val hasActivity :String = record.getOrDefault(QRealTimeConstant.KEY_HAS_ACTIVITY,"")
 
       //成人、儿童、婴儿
       val adult :String = record.getOrDefault(QRealTimeConstant.KEY_PRODUCT_ADULT,"")

@@ -46,12 +46,14 @@ object UserLogsClickHandler {
 
       //3 实时流数据集合操作
       val dStream :DataStream[UserLogData] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+
       //交互点击行为
       val clickDStream :DataStream[UserLogClickData] = dStream.filter(
         (log : UserLogData) => {
           log.action.equalsIgnoreCase(ActionEnum.INTERACTIVE.getCode) && log.eventType.equalsIgnoreCase(EventEnum.CLICK.getCode)
         }
       ).map(new UserLogClickDataMapFun())
+      clickDStream.print("=====clickDStream========")
 
 
       //4 写入下游环节ES(具体下游环节取决于平台的技术方案和相关需求,如flink+es技术组合)
@@ -79,7 +81,6 @@ object UserLogsClickHandler {
 
     val appName = "qf.UserLogsClickHandler"
     val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
-    val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_CLICK
 
     val indexName = QRealTimeConstant.ES_INDEX_NAME_LOG_CLICK
 

@@ -108,7 +108,7 @@ object QRealtimeCommFun {
 
         //定时更新缓存
         val initialDelay: Long = 0l
-        val period :Long = 30l
+        val period :Long = 60l
        scheduled.scheduleAtFixedRate(new Runnable {
          override def run(): Unit = {
            reloadDB()
@@ -264,7 +264,7 @@ object QRealtimeCommFun {
       //调度资源
       scheduled  = new ScheduledThreadPoolExecutor(2)
       val initialDelay: Long = 0l
-      val period :Long = 30l
+      val period :Long = 60l
       scheduled.scheduleAtFixedRate(new Runnable {
         override def run(): Unit = {
           reloadDB()

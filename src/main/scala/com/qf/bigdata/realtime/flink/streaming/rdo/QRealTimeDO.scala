@@ -56,6 +56,14 @@ object QRealTimeDO {
 
 
   /**
+    *用户行为日志页面浏览操作数据(告警)
+    */
+  case class UserLogPageViewAlertData(userDevice:String, userID:String,userRegion:String,
+                                      userRegionIP:String, duration:String, ct:Long)
+
+
+
+  /**
     * 页面浏览日志统计数据
     */
   case class UserLogPageViewAggMeanData(access:Long, users:Long, totalDuration:Long, avgDuration:Long, maxTimestamp:Long)
@@ -121,6 +129,11 @@ object QRealTimeDO {
                              price:Int, fee:Int, hasActivity:String,
                              adult:String, yonger:String, baby:String, ct:Long)
 
+  case class OrderDetailSimData(orderID:String, userID:String, productID:String, pubID:String,
+                             userRegion:String, traffic:String,
+                             price:Int, fee:Int, hasActivity:String,ct:Long)
+
+
   /**
     * 订单会话窗口维度列集
     */
@@ -129,7 +142,7 @@ object QRealTimeDO {
 
   case class OrderTrafficDimData(productID:String, traffic:String)
 
-  case class OrderTrafficDimMeaData(productID:String, traffic:String, startWindowTime:Long, endWindowTime:Long,orders:Long, members:Long,totalFee:Long)
+  case class OrderTrafficDimMeaData(productID:String, traffic:String, startWindowTime:Long, endWindowTime:Long,orders:Long, totalFee:Long)
 
   case class OrderTrafficMidData(productID:String, traffic:String, orders:Long, members:Long,totalFee:Long)
 

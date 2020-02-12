@@ -15,7 +15,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
   */
 class UserLogsKSchema(topic:String) extends KafkaSerializationSchema[UserLogData] with KafkaDeserializationSchema[UserLogData] {
 
-  val gson : Gson = new Gson()
+
 
   /**
     * 反序列化
@@ -25,6 +25,7 @@ class UserLogsKSchema(topic:String) extends KafkaSerializationSchema[UserLogData
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): UserLogData = {
     val key = record.key()
     val value = record.value()
+    val gson : Gson = new Gson()
     val log :UserLogData = gson.fromJson(new String(value), classOf[UserLogData])
     log
   }
