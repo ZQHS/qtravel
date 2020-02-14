@@ -3,7 +3,7 @@ package com.qf.bigdata.realtime.flink.streaming.etl.dw.orders
 import java.util.Properties
 
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
-import com.qf.bigdata.realtime.flink.schema.{OrderDetailKSchema}
+import com.qf.bigdata.realtime.flink.schema.OrderDetailKSchema
 import com.qf.bigdata.realtime.flink.streaming.assigner.OrdersPeriodicAssigner
 import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun.OrderDetailDataMapFun
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderDetailData, OrderWideAggDimData, OrderWideData, OrderWideTimeAggDimMeaData}
@@ -11,6 +11,7 @@ import com.qf.bigdata.realtime.flink.util.help.FlinkHelper
 import com.qf.bigdata.realtime.util.PropertyUtil
 import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, TumblingProcessingTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
@@ -65,11 +66,6 @@ object OrdersDetailHandler {
         * 4 设置事件时间提取器及水位计算
         *   固定范围的水位指定(注意时间单位)
         */
-//              val orderBoundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[OrderDetailData](Time.milliseconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
-//                override def extractTimestamp(element: OrderDetailData): Long = {
-//                  element.ct
-//                }
-//              }
       val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
       orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
       orderDetailDStream.print("order.orderDStream---")
@@ -111,7 +107,7 @@ object OrdersDetailHandler {
         *   流式处理的时间特征依赖(使用事件时间)
         */
       val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
+      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
       env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
 
 
@@ -125,6 +121,8 @@ object OrdersDetailHandler {
 
       val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
       kafkaConsumer.setStartFromLatest()
+      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
+
 
       /**
         * 3 订单数据
@@ -134,12 +132,28 @@ object OrdersDetailHandler {
       val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
       //orderDetailDStream.print("orderDStream---:")
 
+      /**
+        * 5 设置事件时间提取器及水位计算
+        *   固定范围的水位指定(注意时间单位)
+        */
+        val orderBoundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[OrderDetailData](Time.seconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
+          override def extractTimestamp(element: OrderDetailData): Long = {
+            val ct = element.ct
+            ct
+          }
+        }
+      val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
+      //orderDetailDStream.print("order.orderDStream---")
+
 
       /**
         * 4 订单数据聚合
         */
-      val aggDStream:DataStream[_] = orderDetailDStream.keyBy(_.productID)
-        .window(TumblingProcessingTimeWindows.of(Time.seconds(10)))
+      val aggDStream:DataStream[_] = orderDetailDStream
+        .assignTimestampsAndWatermarks(orderBoundedAssigner)
+        .keyBy(_.productID)
+        .window(TumblingEventTimeWindows.of(Time.seconds(10)))
+        .allowedLateness(Time.seconds(5))
         .sum("price")
       aggDStream.print("order.aggDStream---:")
 
@@ -178,10 +192,10 @@ object OrdersDetailHandler {
 
     val appName = "flink.OrdersDetailHandler"
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "test_ods2"
+    val fromTopic = "test_ods"
 
     val toTopic = QRealTimeConstant.TOPIC_ORDER_DW
-    val groupID = "group.OrdersDetailHandler"
+    val groupID = "group.OrdersDetailHandler2020"
 
     //handleOrdersJob(appName, fromTopic, groupID, toTopic)
 

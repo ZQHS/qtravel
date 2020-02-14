@@ -80,9 +80,11 @@ object UserLogsClickHandler {
     //    val toTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_TO)
 
     val appName = "qf.UserLogsClickHandler"
-    val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
+    //val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
+    val fromTopic = "test_logs"
 
-    val indexName = QRealTimeConstant.ES_INDEX_NAME_LOG_CLICK
+    //val indexName = QRealTimeConstant.ES_INDEX_NAME_LOG_CLICK
+    val indexName = "qf_travel"
 
     //明细数据输出es
     handleLogsETL4ESJob(appName, fromTopic, indexName)

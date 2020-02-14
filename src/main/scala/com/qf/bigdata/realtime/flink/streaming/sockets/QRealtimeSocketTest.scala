@@ -7,10 +7,12 @@ import org.apache.flink.api.common.state.{ValueState, ValueStateDescriptor}
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.api.scala._
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.triggers.{Trigger, TriggerResult}
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import scala.collection.JavaConversions._
 
 object QRealtimeSocketTest {
 
@@ -122,9 +124,61 @@ object QRealtimeSocketTest {
   }
 
 
+  /**
+    * 实时开窗聚合数据
+    */
+  def testLocal():Unit = {
+
+    case class MyUser(num:String, gender:String, ct:Long)
+
+    //1 flink环境初始化
+    val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
+    //使用事件时间做处理参考
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
+    env.registerType(classOf[MyUser])
+
+    println(Long.MinValue)
+
+
+    var users :Seq[(String, Int,Long)] = Seq[(String,Int,Long)]()
+    for(idx <- 1 to 100){
+      val num = CommonUtil.getRandom(1)
+      val ct :Long = CommonUtil.getRandomTimestamp
+      users = users.:+((num, idx, ct))
+    }
+
+    //2 数据结构数据源
+    val dStream:DataStream[(String,Int,Long)] = env.fromCollection(users)
+    val userBoundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[(String,Int,Long)](Time.seconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
+      override def extractTimestamp(element: (String,Int,Long)): Long = {
+        val ct = element._3
+        println(s"""ct=$ct""")
+        ct
+      }
+    }
+    val dStream2:DataStream[(String,Int,Long)] = dStream.assignTimestampsAndWatermarks(userBoundedAssigner)
+    //dStream2.print("dStream")
+
+    /**
+      * 4 订单数据聚合
+      */
+    val aggDStream:DataStream[_] = dStream2.keyBy(_._2)
+      .window(TumblingEventTimeWindows.of(Time.seconds(10)))
+      //.allowedLateness(Time.seconds(5))
+      .sum(1)
+    aggDStream.print("aggDStream---:")
+
+    env.execute("flink.et.test")
+  }
+
+
   def main(args: Array[String]): Unit = {
 
-    test()
+    //test()
+
+
+    testLocal()
+
   }
 
 }

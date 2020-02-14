@@ -35,7 +35,7 @@ object UserLogsViewWarnHandler {
     * 启动日志报警处理
     * 假设规则：N分钟内启动M次
     */
-  def handleViewWarnJob(appName:String, fromTopic:String, toTopic:String, timeRange:Int, times:Int, minDuration:Long):Unit = {
+  def handleViewWarnJob(appName:String, groupID:String, fromTopic:String, toTopic:String, timeRange:Int, times:Int, minDuration:Long, maxDuration:Long):Unit = {
 
     //1 flink环境初始化使用事件时间做处理参考
     val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
@@ -44,6 +44,7 @@ object UserLogsViewWarnHandler {
 
     //2 kafka流式数据源
     val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
+    consumerProperties.setProperty("group.id", groupID)
 
     //创建消费者和消费策略
     val schema:KafkaDeserializationSchema[UserLogData] = new UserLogsKSchema(fromTopic)
@@ -55,12 +56,12 @@ object UserLogsViewWarnHandler {
 
     //水位设置(基于事件时间才有)
     val userLogsAssigner = new UserLogsAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-    dStream.assignTimestampsAndWatermarks(userLogsAssigner)
-
 
 
     //页面浏览
-    val viewDStream :DataStream[UserLogPageViewData] = dStream.filter(
+    val viewDStream :DataStream[UserLogPageViewData] = dStream
+      .assignTimestampsAndWatermarks(userLogsAssigner)
+      .filter(
       (log : UserLogData) => {
         log.action.equalsIgnoreCase(ActionEnum.PAGE_ENTER_H5.getCode) || log.action.equalsIgnoreCase(ActionEnum.PAGE_ENTER_NATIVE.getCode)
       }
@@ -69,14 +70,14 @@ object UserLogsViewWarnHandler {
 
     /**
       * 4 设置复杂规则 cep
-      * 5分钟内连续连续停留时长<5s的情况出现3次以上
+      * 5分钟内连续连续 停留时长 小于X 大于Y 的情况出现3次以上
       */
     val pattern :Pattern[UserLogPageViewData, UserLogPageViewData] =
       Pattern.begin[UserLogPageViewData](QRealTimeConstant.FLINK_CEP_VIEW_BEGIN)
       .where(
         (value: UserLogPageViewData, ctx) => {
           val durationTime = value.duration.toLong
-          durationTime < minDuration
+          durationTime < minDuration || durationTime > maxDuration
         }
       ).timesOrMore(times)
       .consecutive() //连续的
@@ -87,6 +88,7 @@ object UserLogsViewWarnHandler {
     val viewDurationAlertDStream :DataStream[UserLogPageViewAlertData] = viewPatternStream.process(
       new UserLogsViewPatternProcessFun()
     )
+    viewDurationAlertDStream.print("=====viewDurationAlertDStream=====")
 
 
     //5 写入下游环节
@@ -117,15 +119,17 @@ object UserLogsViewWarnHandler {
     //    val launchCount = parameterTool.get(QRealTimeConstant.KEY_RM_LAUNCH_COUNT)
 
     val appName = "qf.UserLogsViewWarnHandler"
+    val groupID = "group.UserLogsViewWarnHandler"
     val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
     val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_LAUNCH_WARN
     val timeRange :Int = 5
     val times :Int = 3
     val minDuration:Long = 5l
+    val maxDuration:Long = 50l
 
 
     //启动日志处理
-    handleViewWarnJob(appName, fromTopic, toTopic, timeRange, times, minDuration)
+    handleViewWarnJob(appName, groupID, fromTopic, toTopic, timeRange, times, minDuration, maxDuration)
 
 
 

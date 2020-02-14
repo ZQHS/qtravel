@@ -120,9 +120,14 @@ public class CSVUtil implements Serializable {
 
         String path = "";
 
-        List<Map<String,String>> areaCodes = readCSVFile(path,QUOTE_TAB);
+        //List<Map<String,String>> areaCodes = readCSVFile(path,QUOTE_TAB);
+        //System.out.println("area.size="+areaCodes.size());
 
-        System.out.println("area.size="+areaCodes.size());
+        String[] headers = new String[]{};
+        char delimiter = QUOTE_COMMON;
+        List<Object[]> datas = null;
+        boolean append = true;
+
 
     }
 

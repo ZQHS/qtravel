@@ -4315,13 +4315,73 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
 
 
 
+### 第九节 CEP复杂事件处理
+
+#### 背景说明
+
+```
+在实际工作中，可能会遇到要求数据能够实时的采集下来或者在高并发场景下业务逻辑以异步方式集合消息通道来进行数据处理，这样就涉及一个问题数据如何实时采集，虽然有像flume这样的采集框架，但它基于数据量大小和时间间隔的方式不一定能满足实时采集要求，所以消息通道+消息消费落地这种技术方案可以解决这类问题，数据通道可以采用kafka，消息消费可以采用Flink、SparkStreaming等框架完成。另外实时采集到的数据还可以校对实时计算结果或进行补救措施。
+```
 
 
 
+#### 用户浏览页面日志停留时长异常
+
+##### 需求点
+
+```
+用户浏览页面日志停留时长普通情况下应该符合本行业的规律，远低于范围或高于范围的数据应该发出报警信息以预防并进一步分析原因，示例记录用户浏览页面场景下停留时长<5s或>200s的异常情况并进行追踪或报警处理
+```
 
 
 
-### 第九节 实时数据采集
+##### 技术分析
+
+```
+1 数据源
+  基于用户浏览页面日志数据来完成
+  
+2 Flink CEP处理
+
+3 数据输出
+  * 消息队列kafka（保障线上报警实时性）
+  * 分布式缓存 Redis（形成缓存级别报警库）
+  * HDFS | S3 hdfs://hdfsCluster/data/xxx（用于追踪分析异常数据原因）
+```
+
+
+
+用户浏览页面日志停留时长异常处理过程(局部代码)
+
+详细代码参考：com.qf.bigdata.realtime.flink.streaming.cep.UserLogsViewWarnHandler
+
+```scala
+/**
+* 4 设置复杂规则 cep
+* 	连续N次停留时长超越合理区间
+*/
+val pattern :Pattern[UserLogPageViewData, UserLogPageViewData] =
+Pattern.begin[UserLogPageViewData](QRealTimeConstant.FLINK_CEP_VIEW_BEGIN)
+.where(
+	(value: UserLogPageViewData, ctx) => {
+		val durationTime = value.duration.toLong
+		durationTime < minDuration || durationTime > maxDuration
+}
+).timesOrMore(times)
+.consecutive() //连续的
+
+
+/**
+* 5 页面浏览告警数据流
+*/
+val viewPatternStream :PatternStream[UserLogPageViewData]= CEP.pattern(viewDStream, pattern.within(Time.minutes(timeRange)))
+    
+val viewDurationAlertDStream :DataStream[UserLogPageViewAlertData] = viewPatternStream.process(new UserLogsViewPatternProcessFun())
+```
+
+
+
+### 第十节 实时数据采集
 
 #### 背景说明
 

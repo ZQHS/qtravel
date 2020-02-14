@@ -32,7 +32,7 @@ object QRealTimeConstant {
 
 
   //flink最大乱序时间
-  val FLINK_WATERMARK_MAXOUTOFORDERNESS = 5 * 1000l
+  val FLINK_WATERMARK_MAXOUTOFORDERNESS = 5l
 
   //flink水位间隔时间
   val FLINK_WATERMARK_INTERVAL = 5 * 1000l
@@ -47,7 +47,7 @@ object QRealTimeConstant {
   val FLINK_SLIDE_INTERVAL_SIZE :Long= 5L
 
   //flink检查点间隔
-  val FLINK_CHECKPOINT_INTERVAL :Long = 20 * 1000l
+  val FLINK_CHECKPOINT_INTERVAL :Long = 3 * 1000l
 
   //flink延时设置
   val FLINK_ALLOWED_LATENESS :Long = 10L

@@ -44,7 +44,7 @@ object OrdersDetailAggHandler {
         *   流式处理的时间特征依赖(使用事件时间)
         */
       val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
+      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
       env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
 
       /**
@@ -68,17 +68,30 @@ object OrdersDetailAggHandler {
       val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
       //orderDetailDStream.print("orderDStream---:")
 
+      /**
+        * 5 设置事件时间提取器及水位计算
+        *   固定范围的水位指定(注意时间单位)
+        */
+      val orderBoundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[OrderDetailData](Time.seconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
+        override def extractTimestamp(element: OrderDetailData): Long = {
+          val ct = element.ct
+          ct
+        }
+      }
+      val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
 
       /**
         * 4 开窗聚合操作
         */
-      val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.keyBy(
+      val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream
+        .assignTimestampsAndWatermarks(orderBoundedAssigner)
+        .keyBy(
         (detail:OrderDetailData) => OrderDetailAggDimData(detail.userRegion, detail.traffic)
       )
-        .window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
+        .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
         .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
         .aggregate(new OrderDetailTimeAggFun(), new OrderDetailTimeWindowFun())
-      aggDStream.print("order.aggDStream---:")
+      aggDStream.print("order.aggDStream  ---:")
 
 
       /**
@@ -121,6 +134,7 @@ object OrdersDetailAggHandler {
 
     val appName = "qf.OrdersDetailAggHandler"
     val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+
 
     val toTopic = QRealTimeConstant.TOPIC_ORDER_DM
     val groupID = "group.OrdersDetailAggHandler"

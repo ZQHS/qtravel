@@ -37,9 +37,7 @@ class UserLogsAssigner(maxOutOfOrderness :Long) extends AssignerWithPeriodicWate
     */
   override def extractTimestamp(element: UserLogData, previousElementTimestamp: Long): Long = {
     val ct = element.ct.toInt
-    System.out.println("mark:"+element);
     currentMaxTimestamp = Math.max(ct,currentMaxTimestamp)
-    println(s"QRealTimeAssigner currentMaxTimestamp=${currentMaxTimestamp}, ct=${ct}")
     ct
   }
 }

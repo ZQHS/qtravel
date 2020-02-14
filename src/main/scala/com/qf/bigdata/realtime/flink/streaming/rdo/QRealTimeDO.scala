@@ -33,7 +33,7 @@ object QRealTimeDO {
   /**
     * 启动日志统计数据
     */
-  case class UserLogAggDimMeanData(access:Long, users:Long, ct:Long)
+  case class UserLogAggDimMeanData(access:Long, users:Long, begin:Long, end:Long)
 
 
   /**
@@ -97,6 +97,12 @@ object QRealTimeDO {
     *用户行为日志点击行为统计输出数据
     */
   case class UserLogClickDimMeanData(userRegion:String, eventTargetType:String, access:Long, users:Long, startWindowTime:Long, endWindowTime:Long)
+
+
+  /**
+    *用户行为日志点击行为统计输出数据
+    */
+  case class UserLogClickDimMeanData2(eventTargetType:String, access:Long, users:Long, startWindowTime:Long, endWindowTime:Long)
 
 
   /**
