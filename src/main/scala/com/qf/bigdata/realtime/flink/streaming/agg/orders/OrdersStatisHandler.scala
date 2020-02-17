@@ -1,5 +1,6 @@
 package com.qf.bigdata.realtime.flink.streaming.agg.orders
 
+import java.util.concurrent.TimeUnit
 import java.util.{Date, Properties}
 
 import com.qf.bigdata.realtime.constant.CommonConstant
@@ -23,50 +24,43 @@ import org.apache.flink.streaming.api.windowing.time.Time
 
 /**
   * 旅游订单业务实时计算
-  * 订单数据综合统计
+  * 基于订单数量触发订单数据统计任务
   */
 object OrdersStatisHandler {
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger("OrdersStatisHandler")
 
 
   /**
     * 实时数据综合统计
-    * 基于数据量作为触发条件进行窗口分组聚合
+    * 基于订单数据量作为触发条件进行窗口分组聚合
     */
-  def handleOrdersStatis4CountJob(appName:String, fromTopic:String, toTopic:String, groupID:String, indexName:String,maxCount:Long):Unit = {
+  def handleOrdersStatis4CountJob(appName:String, groupID:String, fromTopic:String, indexName:String, maxCount:Long):Unit = {
     try{
       /**
         * 1 Flink环境初始化
-        *   流式处理的时间特征依赖(使用事件时间)
+        *   流式处理的时间特征依赖(使用处理时间)
         */
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
-      env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
+      //注意：检查点时间间隔单位：毫秒
+      val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+      val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+      val timeChar = TimeCharacteristic.EventTime
+      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, timeChar, watermarkInterval)
 
       /**
-        * 2 kafka流式数据源
-        *   kafka消费配置参数
-        *   kafka消费策略
+        * 2 读取kafka旅游产品订单数据并形成订单实时数据流
         */
-      val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
-      consumerProperties.setProperty("group.id", groupID)
-
-      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
-      kafkaConsumer.setStartFromLatest()
-      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
-
-      /**
-        * 3 订单数据
-        *   原始明细数据转换操作
-        */
-      val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-      val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
-      //orderDetailDStream.print(s"order.orderDetailDStream[${CommonUtil.formatDate4Def(new Date())}]---:")
+      val orderDetailDStream:DataStream[OrderDetailData] = FlinkHelper.createOrderDetailDStream(env, groupID, fromTopic,timeChar)
 
 
       /**
-        * 5 综合统计
+        * 3 基于订单数据量触发的订单统计
+        *  (1) 分组维度：小时粒度的时间维度(hourTime)+出游交通方式(traffic)
+        *      下面注释的地方为另一种小时时间提取方法
+        *  (2) 开窗方式：基于处理时间的滚动窗口
+        *  (3) 窗口触发器：自定义基于订单数据量的窗口触发器OrdersStatisCountTrigger
+        *  (4) 数据处理函数：OrderStatisWindowProcessFun
         */
       val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
         (detail:OrderDetailData) => {
@@ -76,13 +70,14 @@ object OrdersStatisHandler {
           OrderDetailSessionDimData(detail.traffic, hourTime)
         }
       )
-        .window(TumblingProcessingTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
+        .window(TumblingEventTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
         .trigger(new OrdersStatisCountTrigger(maxCount))
         .process(new OrderStatisWindowProcessFun())
       statisDStream.print(s"order.statisDStream[${CommonUtil.formatDate4Def(new Date())}]---:")
 
       /**
-        * 6 聚合数据写入ES
+        * 4 聚合数据写入ES
+        *   (1) ES接收json或map结构数据，插入的id值为自定义索引主键id(为下游使用方搜索准备，如果采用es自生成id方式则不用采用此方式)
         */
       val esDStream:DataStream[String] = statisDStream.map(
         (value : OrderDetailStatisData) => {
@@ -93,14 +88,14 @@ object OrdersStatisHandler {
           addJson
         }
       )
-      esDStream.print("order.esDStream---")
+      esDStream.print("order.count.esDStream---")
 
       /**
-        * 7 数据输出Sink
+        * 5 订单统计结果数据输出Sink
         *   自定义ESSink输出
         */
       val orderWideDetailESSink = new CommonESSink(indexName)
-      esDStream.addSink(orderWideDetailESSink)
+      //esDStream.addSink(orderWideDetailESSink)
 
       env.execute(appName)
     }catch {
@@ -115,40 +110,32 @@ object OrdersStatisHandler {
 
   /**
     * 实时数据综合统计
-    * 基于数据量作为触发条件进行窗口分组聚合
+    * 基于处理时间作为触发条件进行窗口分组聚合
     */
-  def handleOrdersStatis4ProcceTimeJob(appName:String, fromTopic:String, toTopic:String, groupID:String, indexName:String,maxInternal:Long):Unit = {
+  def handleOrdersStatis4ProcceTimeJob(appName:String, groupID:String, fromTopic:String, indexName:String,maxInternal:Long):Unit = {
     try{
       /**
         * 1 Flink环境初始化
-        *   流式处理的时间特征依赖(使用事件时间)
+        *   流式处理的时间特征依赖(使用处理时间)
         */
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
-      env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
+      //注意：检查点时间间隔单位：毫秒
+      val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+      val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+      val timeChar = TimeCharacteristic.ProcessingTime
+      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, timeChar, watermarkInterval)
 
       /**
-        * 2 kafka流式数据源
-        *   kafka消费配置参数
-        *   kafka消费策略
+        * 2 读取kafka旅游产品订单数据并形成订单实时数据流
         */
-      val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
-      consumerProperties.setProperty("group.id", groupID)
-      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
-      kafkaConsumer.setStartFromLatest()
-      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
-
-      /**
-        * 3 订单数据
-        *   原始明细数据转换操作
-        */
-      val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-      val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
-      //orderDetailDStream.print(s"order.orderDetailDStream[${CommonUtil.formatDate4Def(new Date())}]---:")
+      val orderDetailDStream:DataStream[OrderDetailData] = FlinkHelper.createOrderDetailDStream(env, groupID, fromTopic,timeChar)
 
 
       /**
-        * 4 综合统计
+        * 3 基于处理触发的订单统计
+        *  (1) 分组维度：小时粒度的时间维度(hourTime)+出游交通方式(traffic)
+        *  (2) 开窗方式：基于处理时间的滚动窗口
+        *  (3) 窗口触发器：自定义基于订单数据量的窗口触发器OrdersStatisTimeTrigger
+        *  (4) 数据处理函数：OrderStatisWindowProcessFun
         */
       val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
         (detail:OrderDetailData) => {
@@ -157,12 +144,13 @@ object OrdersStatisHandler {
         }
       )
         .window(TumblingProcessingTimeWindows.of(Time.days(QRealTimeConstant.COMMON_NUMBER_ONE),  Time.hours(-8))) //每天5分钟触发
-        .trigger(new OrdersStatisTimeTrigger(maxInternal))
+        .trigger(new OrdersStatisTimeTrigger(maxInternal, TimeUnit.MINUTES))
         .process(new OrderStatisWindowProcessFun())
       statisDStream.print(s"order.statisDStream[${CommonUtil.formatDate4Def(new Date())}]---:")
 
       /**
-        * 6 聚合数据写入ES
+        * 4 聚合数据写入ES
+        *   (1) ES接收json或map结构数据，插入的id值为自定义索引主键id(为下游使用方搜索准备，如果采用es自生成id方式则不用采用此方式)
         */
       val esDStream:DataStream[String] = statisDStream.map(
         (value : OrderDetailStatisData) => {
@@ -173,14 +161,14 @@ object OrdersStatisHandler {
           addJson
         }
       )
-      esDStream.print("order.esDStream---")
+      esDStream.print("order.time.esDStream---")
 
       /**
-        * 7 数据输出Sink
+        * 5 数据输出Sink
         *   自定义ESSink输出
         */
       val orderWideDetailESSink = new CommonESSink(indexName)
-      esDStream.addSink(orderWideDetailESSink)
+      //esDStream.addSink(orderWideDetailESSink)
 
       env.execute(appName)
     }catch {
@@ -198,22 +186,24 @@ object OrdersStatisHandler {
     //    val appName = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_APPNAME)
     //    val fromTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_FROM)
     //    val toTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_TO)
+    //应用程序名称
     val appName = "qf.OrdersStatisHandler"
-    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
 
-    val toTopic = QRealTimeConstant.TOPIC_ORDER_DM_STATIS
+    //kafka消费组
     val groupID = "group.OrdersStatisHandler"
 
+    //kafka数据消费topic
+    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
 
     //定量触发窗口计算
-//    val maxCount = 500
-//    val indexName = "travel_orders_count_statis"
-//    handleOrdersStatis4CountJob(appName, fromTopic, toTopic, groupID, indexName,maxCount)
+    val maxCount = 500
+    val indexNameCount = "travel_orders_count_statis"
+    handleOrdersStatis4CountJob(appName, groupID, fromTopic, indexNameCount, maxCount)
 
     //定时触发窗口计算
-//    val maxInternal = 1
-//    val indexName = "travel_orders_time_statis"
-//    handleOrdersStatis4ProcceTimeJob(appName, fromTopic, toTopic, groupID, indexName,maxInternal)
+    val maxInternal = 1
+    val indexNameTime = "travel_orders_time_statis"
+    handleOrdersStatis4ProcceTimeJob(appName, groupID, fromTopic, indexNameTime, maxInternal)
 
 
   }

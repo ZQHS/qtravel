@@ -1,101 +1,90 @@
 package com.qf.bigdata.realtime.flink.streaming.agg.orders
 
-import java.util.{Date, Properties}
-
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.schema.OrderStatisKSchema
 import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersAggFun._
-import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun.OrderDetailDataMapFun
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO._
-import com.qf.bigdata.realtime.flink.streaming.sink.orders.OrderStatisESSink
 import com.qf.bigdata.realtime.flink.util.help.FlinkHelper
 import com.qf.bigdata.realtime.util.PropertyUtil
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
-import org.apache.flink.streaming.api.windowing.assigners.{TumblingProcessingTimeWindows}
+import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, TumblingProcessingTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaProducer}
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer
 import org.slf4j.{Logger, LoggerFactory}
 import org.apache.flink.api.scala._
 
 
 /**
-  * 旅游订单业务实时排名
-  * 订单数据综合统计排名
+  * 旅游订单业务数据的实时统计排名
   */
 object OrdersTopnStatisHandler {
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger("OrdersTopnStatisHandler")
 
 
   /**
-    * 实时数据综合统计
-    * 基于数据量作为触发条件进行窗口分组聚合
+    * 基于窗口内的订单数据进行统计后的实时排名
     */
-  def handleOrdersWindowTopNJob(appName:String, fromTopic:String, toTopic:String, groupID:String, topN:Long, maxInternal:Long):Unit = {
+  def handleOrdersWindowTopNJob(appName:String, groupID:String, fromTopic:String, toTopic:String, topN:Long):Unit = {
     try{
       /**
         * 1 Flink环境初始化
         *   流式处理的时间特征依赖(使用事件时间)
         */
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
-      env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
+      //注意：检查点时间间隔单位：毫秒
+      val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+      val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+      val timeChar = TimeCharacteristic.EventTime
+      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, timeChar, watermarkInterval)
 
       /**
-        * 2 kafka流式数据源
-        *   kafka消费配置参数
-        *   kafka消费策略
+        * 2 读取kafka旅游产品订单数据并形成订单实时数据流
         */
-      val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
-      consumerProperties.setProperty("group.id", groupID)
-
-      //kafka消费+消费策略
-      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
-      kafkaConsumer.setStartFromLatest()
-      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
-
-      /**
-        * 3 订单数据
-        *   原始明细数据转换操作
-        */
-      val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-      val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
-      //orderDetailDStream.print("orderDStream---:")
+      val orderDetailDStream:DataStream[OrderDetailData] = FlinkHelper.createOrderDetailDStream(env, groupID, fromTopic,timeChar)
 
 
       /**
-        * 4 开窗聚合操作
+        * 3 订单数据聚合操作
+        *  (1) 分组维度：产品ID(productID)、出游交通方式(traffic)
+        *  (2) 开窗方式：滚动窗口(基于事件时间) TumblingEventTimeWindows
+        *  (3) 允许延时时间：allowedLateness
+        *  (4) 聚合操作：aggregate
         */
       val aggDStream:DataStream[OrderTrafficDimMeaData] = orderDetailDStream.keyBy(
         (detail:OrderDetailData) => {
           OrderTrafficDimData(detail.productID, detail.traffic)
         }
       )
-        .window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE * 3)))
+        .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE * 1)))
         .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
         .aggregate(new OrderDetailTimeAggFun(), new OrderTrafficTimeWindowFun())
       //aggDStream.print("order.aggDStream---:")
 
 
       /**
-        * 5 topN排序
-        * Sorted的数据结构TreeSet或者是优先级队列PriorityQueue , TreeSet 实现原理是红黑树，优先队列实现原理就是最大/最小堆，
-        * 这两个都可以满足需求，但要如何选择？红黑树的时间复杂度是logN，而堆的构造复杂度是N, 读取复杂度是1，
-        * 但是我们这里需要不断的做数据插入那么就涉及不断的构造过程，相对而言选择红黑树比较好(其实flink sql内部做topN也是选择红黑树类型的TreeMap)
+        * 4 topN排序
+        * Sorted的数据结构TreeSet或者是优先级队列PriorityQueue
+        * (1) TreeSet实现原理是红黑树,时间复杂度是logN
+        * (2) 优先队列实现原理就是最大/最小堆,堆的构造复杂度是N, 读取复杂度是1
+        * 目前场景对应的是写操作频繁那么选择红黑树结构相对较好
         */
       val topNDStream:DataStream[OrderTrafficDimMeaData] = aggDStream.keyBy(
         (detail:OrderTrafficDimMeaData) => {
           OrderTrafficDimData(detail.productID, detail.traffic)
         }
       )
-        .window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE * 3)))
+        .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE * 3)))
         .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
         .process(new OrderTopNKeyedProcessFun(topN))
-      //topNDStream.print("order.topNDStream---:")
+      topNDStream.print("order.topNDStream---:")
+
 
       /**
-        * 6 数据输出kafka
+        * 5 数据流(如DataStream[OrderTrafficDimMeaData])输出sink(如kafka、es等)
+        *   (1) kafka数据序列化处理 如OrderStatisKSchema
+        *   (2) kafka生产者语义：AT_LEAST_ONCE 至少一次
         */
       val orderStatisKSchema = new OrderStatisKSchema(toTopic)
       val kafkaProductConfig = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_PRODUCER_CONFIG_URL)
@@ -108,14 +97,6 @@ object OrdersTopnStatisHandler {
       //加入kafka摄入时间
       travelKafkaProducer.setWriteTimestampToKafka(true)
       topNDStream.addSink(travelKafkaProducer)
-
-
-      /**
-        * 6 数据输出ES
-        *   自定义输出
-        */
-      //      val orderStatisESSink = new OrderStatisESSink(indexName)
-      //      topNDStream.addSink(orderStatisESSink)
 
       env.execute(appName)
     }catch {
@@ -134,17 +115,24 @@ object OrdersTopnStatisHandler {
     //    val appName = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_APPNAME)
     //    val fromTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_FROM)
     //    val toTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_TO)
+
+    //应用程序名称
     val appName = "qf.OrdersTopnStatisHandler"
+
+    //kafka数据源topic
     val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
 
+    //统计结果输出
     val toTopic = QRealTimeConstant.TOPIC_ORDER_DM_STATIS
+
+    //kafka消费组
     val groupID = "group.OrdersTopnStatisHandler"
 
 
-    //定时触发窗口计算
+    //定时时间间隔内触发窗口计算
     val maxInternal = 1
     val topN = 3l
-    handleOrdersWindowTopNJob(appName, fromTopic, toTopic, groupID, topN,maxInternal)
+    handleOrdersWindowTopNJob(appName, groupID, fromTopic, toTopic, topN)
 
 
   }

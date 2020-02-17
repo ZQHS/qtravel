@@ -7,6 +7,9 @@ import org.apache.flink.cep.functions.PatternProcessFunction
 import org.apache.flink.util.Collector
 import scala.collection.JavaConversions._
 
+/**
+  * 用户行为日志涉及的复杂事件处理
+  */
 object UserLogsCepFun {
 
   /**

@@ -5,28 +5,30 @@ import java.util.concurrent.TimeUnit
 
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO._
+import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDimDO.ProductDimDO
 import com.qf.bigdata.realtime.util.CommonUtil
-import org.apache.flink.api.common.functions.AggregateFunction
+import org.apache.flink.api.common.functions.{AggregateFunction, JoinFunction}
 import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, ValueState, ValueStateDescriptor}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.apache.flink.streaming.api.scala.function.{ProcessWindowFunction, WindowFunction}
 import org.apache.flink.streaming.api.windowing.windows.{GlobalWindow, TimeWindow}
-import org.apache.flink.util.{Collector}
+import org.apache.flink.util.Collector
 import org.apache.flink.api.scala._
 import org.apache.flink.streaming.api.windowing.time.Time
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 /**
-* 旅游产品聚合类函数
+* 旅游产品聚合类操作对应函数
 */
 object OrdersAggFun {
 
   //===订单窗口统计====================================================
 
   /**
-    * 订单时间窗口输出函数
+    * 订单聚合数据的窗口处理函数
     */
   class OrderTrafficTimeWindowFun extends WindowFunction[OrderDetailTimeAggMeaData, OrderTrafficDimMeaData, OrderTrafficDimData, TimeWindow]{
     override def apply(key: OrderTrafficDimData, window: TimeWindow, input: Iterable[OrderDetailTimeAggMeaData], out: Collector[OrderTrafficDimMeaData]): Unit = {
@@ -56,7 +58,7 @@ object OrdersAggFun {
 
 
   /**
-    * 订单时间窗口预聚合函数
+    * 订单明细数据基于时间的窗口处理函数(预聚合操作)
     */
   class OrderDetailTimeAggFun extends AggregateFunction[OrderDetailData, OrderDetailTimeAggMeaData, OrderDetailTimeAggMeaData] {
     /**
@@ -100,7 +102,7 @@ object OrdersAggFun {
   }
 
   /**
-    * 订单时间窗口输出函数
+    * 订单明细数据的窗口处理函数
     */
   class OrderDetailTimeWindowFun extends WindowFunction[OrderDetailTimeAggMeaData, OrderDetailTimeAggDimMeaData, OrderDetailAggDimData, TimeWindow]{
     override def apply(key: OrderDetailAggDimData, window: TimeWindow, input: Iterable[OrderDetailTimeAggMeaData], out: Collector[OrderDetailTimeAggDimMeaData]): Unit = {
@@ -135,31 +137,31 @@ object OrdersAggFun {
 
 
   /**
-    * 基于时间窗口方式下的订单数据综合统计处理函数
+    * 订单统计数据的窗口处理函数
     */
   class OrderStatisWindowProcessFun extends ProcessWindowFunction[OrderDetailData, OrderDetailStatisData, OrderDetailSessionDimData, TimeWindow]{
 
-    //状态描述名称
+    //参与订单用户数量的状态描述名称
     val ORDER_STATE_USER_DESC = "ORDER_STATE_USER_DESC"
     var usersState :ValueState[mutable.Set[String]] = _
     var usersStateDesc :ValueStateDescriptor[mutable.Set[String]] = _
 
+    //订单数量的状态描述名称
     val ORDER_STATE_ORDERS_DESC = "ORDER_STATE_ORDERS_DESC"
     var ordersAccState :ValueState[OrderAccData] = _
     var ordersAccStateDesc :ValueStateDescriptor[OrderAccData] = _
 
 
-
     /**
-      * 连接资源初始化(如果需要)
+      * 相关连接资源初始化(如果需要)
       * @param parameters
       */
     override def open(parameters: Configuration): Unit = {
-      //状态数据：订单UV
+      //订单用户列表的状态数据
       usersStateDesc = new ValueStateDescriptor[mutable.Set[String]](ORDER_STATE_USER_DESC, createTypeInformation[mutable.Set[String]])
       usersState = this.getRuntimeContext.getState(usersStateDesc)
 
-      //状态数据：订单度量(订单总数量、订单总费用)
+      //订单状态数据：订单度量(订单总数量、订单总费用)
       ordersAccStateDesc = new ValueStateDescriptor[OrderAccData](ORDER_STATE_ORDERS_DESC, createTypeInformation[OrderAccData])
       ordersAccState = this.getRuntimeContext.getState(ordersAccStateDesc)
     }
@@ -234,19 +236,21 @@ object OrdersAggFun {
 
 
   /**
-    * 基于实时流数据的订单综合统计
+    * 订单业务：自定义分组处理函数
     */
-  class OrderCustomerStatisKeyedProcessFun(maxCount :Long, maxInterval :Long) extends KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData] {
+  class OrderCustomerStatisKeyedProcessFun(maxCount :Long, maxInterval :Long, timeUnit:TimeUnit) extends KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData] {
 
-    //状态描述名称
+    //参与订单的用户数量状态描述名称
     val CUSTOMER_ORDER_STATE_USER_DESC = "CUSTOMER_ORDER_STATE_USER_DESC"
     var customerUserState :ValueState[mutable.Set[String]] = _
     var customerUserStateDesc :ValueStateDescriptor[mutable.Set[String]] = _
 
+    //订单数量状态描述名称
     val CUSTOMER_ORDER_STATE_ORDERS_DESC = "CUSTOMER_ORDER_STATE_ORDERS_DESC"
     var customerOrdersAccState :ValueState[OrderAccData] = _
     var customerOrdersAccStateDesc :ValueStateDescriptor[OrderAccData] = _
 
+    //统计时间范围的状态描述名称
     val CUSTOMER_ORDER_STATE_PROCESS_DESC = "CUSTOMER_ORDER_STATE_PROCESS_DESC"
     var customerProcessState :ValueState[QProcessWindow] = _
     var customerProcessStateDesc :ValueStateDescriptor[QProcessWindow] = _
@@ -269,14 +273,13 @@ object OrdersAggFun {
       //处理时间
       customerProcessStateDesc = new ValueStateDescriptor[QProcessWindow](CUSTOMER_ORDER_STATE_PROCESS_DESC, createTypeInformation[QProcessWindow])
       customerProcessState = this.getRuntimeContext.getState(customerProcessStateDesc)
-
     }
 
     /**
       * 处理数据
-      * @param value
-      * @param ctx
-      * @param out
+      * @param value 元素数据
+      * @param ctx 上下文环境对象
+      * @param out 输出结果
       */
     override def processElement(value: OrderWideData, ctx: KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData]#Context, out: Collector[OrderWideCustomerStatisData]): Unit = {
       //原始数据
@@ -346,12 +349,11 @@ object OrdersAggFun {
       val productType = key.productType
       val toursimType = key.toursimType
 
-
       //时间触发条件：当前处理时间到达或超过上次处理时间+间隔后触发本次窗口操作
       if(customerProcessState.value() == null){
         customerProcessState.update(new QProcessWindow(timestamp, timestamp))
       }
-      val maxIntervalTimestamp :Long = Time.of(maxInterval,TimeUnit.MINUTES).toMilliseconds
+      val maxIntervalTimestamp :Long = Time.of(maxInterval,timeUnit).toMilliseconds
       var nextProcessingTime = TimeWindow.getWindowStartWithOffset(timestamp, 0, maxIntervalTimestamp) + maxIntervalTimestamp
       ctx.timerService().registerProcessingTimeTimer(nextProcessingTime)
       val startWindowTime = customerProcessState.value().start
@@ -385,7 +387,7 @@ object OrdersAggFun {
   //===订单宽表====================================================
 
   /**
-    * 订单宽表时间窗口预聚合函数
+    * 订单宽表数据的窗口预聚合函数
     */
   class OrderWideTimeAggFun extends AggregateFunction[OrderWideData, OrderWideTimeAggMeaData, OrderWideTimeAggMeaData] {
     /**
@@ -428,7 +430,7 @@ object OrdersAggFun {
   }
 
   /**
-    * 订单宽表时间窗口输出函数
+    * 订单宽表数据的窗口处理函数
     */
   class OrderWideTimeWindowFun extends WindowFunction[OrderWideTimeAggMeaData, OrderWideTimeAggDimMeaData, OrderWideAggDimData, TimeWindow]{
     override def apply(key: OrderWideAggDimData, window: TimeWindow, input: Iterable[OrderWideTimeAggMeaData], out: Collector[OrderWideTimeAggDimMeaData]): Unit = {
@@ -454,6 +456,7 @@ object OrdersAggFun {
       val endWindowTime = window.maxTimestamp()
 
       val owDMData = OrderWideTimeAggDimMeaData(productType, toursimType, startWindowTime, endWindowTime,outOrders, outMaxFee, outFees, outMembers, outAvgFee)
+      println(s"""$owDMData""")
       out.collect(owDMData)
     }
   }
@@ -462,7 +465,7 @@ object OrdersAggFun {
   //===计数====================================================
 
   /**
-    * 订单宽表计数窗口预聚合函数
+    * 订单宽表数据的窗口处理函数
     */
   class OrderCountAggFun extends AggregateFunction[OrderDetailData, OrderWideCountAggMeaData, OrderWideCountAggMeaData] {
     /**
@@ -506,7 +509,7 @@ object OrdersAggFun {
 
 
   /**
-    * 订单宽表计数窗口输出函数
+    * 订单宽表数据的窗口处理函数
     */
   class OrderAggWindowFun extends WindowFunction[OrderWideCountAggMeaData, OrderDetailTimeAggDimMeaData, OrderDetailAggDimData, GlobalWindow]{
     override def apply(key: OrderDetailAggDimData, window: GlobalWindow, input: Iterable[OrderWideCountAggMeaData], out: Collector[OrderDetailTimeAggDimMeaData]): Unit = {
@@ -540,7 +543,7 @@ object OrdersAggFun {
 
 
   /**
-    * 订单宽表计数窗口输出函数
+    * 订单宽表数据的窗口处理函数
     */
   class OrderWideAggWindowFun extends WindowFunction[OrderWideCountAggMeaData, OrderWideCountAggDimMeaData, OrderWideAggDimData, GlobalWindow]{
     override def apply(key: OrderWideAggDimData, window: GlobalWindow, input: Iterable[OrderWideCountAggMeaData], out: Collector[OrderWideCountAggDimMeaData]): Unit = {
@@ -573,7 +576,7 @@ object OrdersAggFun {
   //===订单计时(会话窗口)====================================================
 
   /**
-    * 订单时间窗口输出函数
+    * 订单明细数据的窗口处理函数
     */
   class OrderDetailSessionTimeWindowFun extends WindowFunction[OrderDetailTimeAggMeaData, OrderDetailSessionDimMeaData, OrderDetailSessionDimData, TimeWindow]{
     override def apply(key: OrderDetailSessionDimData, window: TimeWindow, input: Iterable[OrderDetailTimeAggMeaData], out: Collector[OrderDetailSessionDimMeaData]): Unit = {
@@ -606,7 +609,7 @@ object OrdersAggFun {
   //===TopN产品订单统计排序=========================================================
 
   /**
-    * 基于实时流数据的订单综合统计
+    * 订单统计排名的窗口处理函数
     */
   class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTrafficDimMeaData, OrderTrafficDimMeaData, OrderTrafficDimData, TimeWindow] {
 
@@ -619,7 +622,7 @@ object OrdersAggFun {
       val productID = key.productID
       val traffic = key.traffic
 
-      //排序比较
+      //排序比较(基于TreeSet)
       val topNContainer = new java.util.TreeSet[OrderTrafficDimMeaData](new OrderTopnComparator())
 
       for(element :OrderTrafficDimMeaData <- elements){
@@ -677,6 +680,10 @@ object OrdersAggFun {
       result.toInt
     }
   }
+
+
+
+
 
 
 }

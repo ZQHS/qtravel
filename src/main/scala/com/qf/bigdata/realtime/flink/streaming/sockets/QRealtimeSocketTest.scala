@@ -98,11 +98,12 @@ object QRealtimeSocketTest {
     */
   def test():Unit = {
 
-    //1 flink环境初始化
-    val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-    //使用事件时间做处理参考
-    //env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
+    //注意：检查点时间间隔单位：毫秒
+    val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+    val tc = TimeCharacteristic.ProcessingTime
+    val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+    val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, tc, watermarkInterval)
+
 
     case class MyRec(world:String,acc:Int)
 
@@ -131,14 +132,11 @@ object QRealtimeSocketTest {
 
     case class MyUser(num:String, gender:String, ct:Long)
 
-    //1 flink环境初始化
-    val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-    //使用事件时间做处理参考
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.registerType(classOf[MyUser])
-
-    println(Long.MinValue)
-
+    //注意：检查点时间间隔单位：毫秒
+    val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+    val tc = TimeCharacteristic.ProcessingTime
+    val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+    val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, tc, watermarkInterval)
 
     var users :Seq[(String, Int,Long)] = Seq[(String,Int,Long)]()
     for(idx <- 1 to 100){

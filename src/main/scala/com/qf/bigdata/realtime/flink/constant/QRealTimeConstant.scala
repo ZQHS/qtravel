@@ -155,8 +155,8 @@ object QRealTimeConstant {
   val FORMATTER_YYYYMMDDHHMMSS: String = "yyyyMMddHHmmss"
 
   //实时采集参数
-  val RM_REC_ROLLOVER_INTERVAL :Long = 1L
-  val RM_REC_INACTIVITY_INTERVAL :Long = 1L
+  val RM_REC_ROLLOVER_INTERVAL :Long = 10L
+  val RM_REC_INACTIVITY_INTERVAL :Long = 20L
   val RM_REC_MAXSIZE :Long = 128L
   val RM_REC_BUCKET_CHECK_INTERVAL :Long = 5L
 
@@ -327,30 +327,18 @@ object QRealTimeConstant {
   //产品列表
   val KEY_PRODUCT_IDS = "product_ids"
 
-  //目标信息
-//  val KEY_EXTS_TARGET_ID = "target_id"
-//  val KEY_EXTS_TARGET_IDS = "target_ids"
-//  val KEY_EXTS_TARGET_KEYS = "target_keys"
-
   //=====查询信息==============================================================
-
-//  val KEY_EXTS_QUERY_TRAVEL_TIME = "q_travel_time" //行程天数
-//
-//  val KEY_EXTS_QUERY_HOT_TARGET = "q_hot_target" //热门目的地
-//
-//  val KEY_EXTS_QUERY_SEND = "q_send" //出发地
-//
-//  val KEY_EXTS_QUERY_SEND_TIME = "q_send_time" //出发时间
-//
-//  val KEY_EXTS_QUERY_PRODUCT_TYPE = "q_product_type" //产品类型：跟团、私家、半自助
-//
-//  val KEY_EXTS_QUERY_PRODUCT_LEVEL = "q_product_level" //产品钻级
 
 
   //用户数量限制级别
   val USER_COUNT_LEVEL = 5
 
   //================================================================
+
+  //MYSQL维表列名
+  val MYSQL_FIELD_PRODUCT_ID = "product_id"
+  val MYSQL_FIELD_PUB_ID = "pub_id"
+
   //产品维表
   val MYDQL_DIM_PRODUCT = "travel.dim_product1"
   val SQL_PRODUCT = s"""

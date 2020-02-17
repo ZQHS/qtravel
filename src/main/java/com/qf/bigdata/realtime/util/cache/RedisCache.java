@@ -1,10 +1,12 @@
 package com.qf.bigdata.realtime.util.cache;
 
+import com.qf.bigdata.realtime.util.CommonUtil;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
 import java.io.Serializable;
+import java.util.Map;
 
 /**
  * redis客户端工具类
@@ -14,6 +16,8 @@ public class RedisCache implements Serializable {
     private static JedisPool pool = null;
     private static Jedis executor = null;
 
+    private static final int port = 6379;
+    private static final int timeout = 10 * 1000;
     private static final int maxIdle = 10;
     private static final int minIdle = 2;
     private static final int maxTotal = 20;
@@ -29,7 +33,7 @@ public class RedisCache implements Serializable {
     public JedisPool connectRedisPool(String ip){
         if(null == pool){
             GenericObjectPoolConfig config = createConfig();
-            pool = new JedisPool(config, ip);
+            pool = new JedisPool(config, ip, port, timeout);
         }
         return pool;
     }
@@ -44,7 +48,7 @@ public class RedisCache implements Serializable {
 
     public static void main(String[] args) {
 
-        String ip = "node243";
+        String ip = "node11";
         int port = 6379;
         String auth = "qfqf";
 
@@ -55,7 +59,7 @@ public class RedisCache implements Serializable {
 
         //查询数据
 //        String singleValue = CommonUtil.getRadomIP();
-//        String key = "testnum";
+//        String key = "testIP";
 //        jedis.set(key, singleValue);
 //        String redisValue = jedis.get(key);
 //        System.out.println("redisValue=" + redisValue);
@@ -84,15 +88,16 @@ public class RedisCache implements Serializable {
 
 
         //========================================
-        String pubTable = "travel.dim_pub1";
-        String pubID = "210480222|1a1bd08f";
+        String productTable = "travel.dim_product1";
+        String productID = "210602273";
 
-        String pubV = jedis.hget(pubTable, pubID);
-        System.out.println("redis.pub =" + pubID + " , pubValue=" + pubV);
+        String pubV = jedis.hget(productTable, productID);
+        System.out.println("redis.product =" + productID + " , pubValue=" + pubV);
 
-//        Map<String,String> redisPubData = jedis.hgetAll(pubTable);
-//        String pubValue = redisPubData.get(pubID);
-//        System.out.println("redis.pub =" + pubID + " , pubValue=" + pubValue);
+        Map<String,String> redisPubData = jedis.hgetAll(productTable);
+        System.out.println("redis.product =" + redisPubData);
+//        String productValue = redisPubData.get(productID);
+//        System.out.println("redis.product =" + productID + " , pubValue=" + productValue);
 
 
 

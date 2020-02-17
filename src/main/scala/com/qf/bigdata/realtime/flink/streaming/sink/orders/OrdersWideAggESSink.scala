@@ -19,21 +19,20 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 /**
-  * 自定义ES Sink
-  * 对应业务点：基于订单宽表明细累计输出
+  * 自定义ES Sink(数据元素以json字符串形式可以通用)
+  * 订单宽表明细数据供使用方查询
   */
 class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideData]{
 
-
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger(this.getClass)
 
+  //ES客户端连接对象
   var transportClient: PreBuiltTransportClient = _
 
 
-
-
   /**
-    * 连接es集群
+    * 初始化：连接ES集群
     * @param parameters
     */
   override def open(parameters: Configuration): Unit = {
@@ -46,8 +45,8 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
 
   /**
     * Sink输出处理
-    * @param value
-    * @param context
+    * @param value 数据
+    * @param context 函数上下文环境对象
     */
   override def invoke(value: OrderWideData, context: SinkFunction.Context[_]): Unit = {
     try {
@@ -55,7 +54,6 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
       val orderDataJson:String = JsonUtil.gObject2Json(value)
       val checkResult: String = checkData(value)
       if (StringUtils.isNotBlank(checkResult)) {
-        //日志记录
         logger.error("Travel.order.ESRecord.sink.checkData.err{}", checkResult)
         return
       }
@@ -68,13 +66,13 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
       //val id = depCode+sep+productType+sep+triffic
       val id = depCode
 
-      //加入更新时间
+      //确定处理维度及度量
       val useFields :List[String] = getOrderWideAggUseFields()
       val sources :java.util.Map[String,Object] = JsonUtil.json2object(orderDataJson, classOf[java.util.Map[String,Object]])
       val record :java.util.Map[String,Object] = checkUseFields(sources, useFields)
 
 
-      //索引名称、类型名称
+      //将数据写入ES集群(使用ES局部更新功能累计度量数据)
       handleData(indexName, indexName, id, record)
 
     }catch{
@@ -84,78 +82,55 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
 
   /**
     * ES插入或更新数据
-    * @param idxName
-    * @param idxTypeName
-    * @param esID
-    * @param value
-    */
-  def handleOrderData(idxName :String, idxTypeName :String, esID :String,
-                 value: java.util.Map[String,String]): Unit ={
-    val indexRequest = new IndexRequest(idxName, idxName, esID).source(value)
-    val response = transportClient.prepareUpdate(idxName, idxName, esID)
-      .setRetryOnConflict(QRealTimeConstant.ES_RETRY_NUMBER)
-      .setDoc(value)
-      .setUpsert(indexRequest)
-      .get()
-    if (response.status() != RestStatus.CREATED && response.status() != RestStatus.OK) {
-      System.err.println("calculate es session record error!map:" + new ObjectMapper().writeValueAsString(value))
-      throw new Exception("run exception:status:" + response.status().name())
-    }
-  }
-
-
-  /**
-    * ES插入或更新数据
-    * @param idxName
-    * @param idxTypeName
-    * @param esID
-    * @param value
+    * @param idxName 索引名称
+    * @param idxTypeName 索引类型名
+    * @param esID 索引ID
+    * @param value 写入数据
     */
   def handleData(idxName :String, idxTypeName :String, esID :String,
                  value: mutable.Map[String,Object]): Unit ={
     //脚本参数赋值
     val params = new java.util.HashMap[String, Object]
     val scriptSb: StringBuilder = new StringBuilder
-    //println(s"""value=${value.keys.mkString}""")
     for ((k :String, v:Object) <- value ) { //if(null != k); if(null != v)
       params.put(k, v)
       var s = ""
       if(QRealTimeConstant.KEY_CT.equals(k)) {
         s = "if(ctx._source."+k+" == null){ctx._source."+k+" = params."+k+"} else { if(ctx._source."+k+" < params."+k+" ){ctx._source."+k+" = params."+k+"}}"
       }else if(QRealTimeConstant.POJO_FIELD_FEE.equalsIgnoreCase(k)){
-        //累计费用
+        //订单累计费用
         s = " if(ctx._source."+k+" != null) {ctx._source."+k +"+= params." + k + "} else { ctx._source."+k+" = params."+k+"} "
       }else if(QRealTimeConstant.POJO_FIELD_FEE_MAX.equalsIgnoreCase(k)){
-        //最大值
+        //单笔订单费用最大值
         s = " if(ctx._source."+k+" == null){ctx._source."+k+" = params."+k+"} else { if(ctx._source."+k+" < params."+k+" ){ctx._source."+k+" = params."+k+"}}"
-
       }else if(QRealTimeConstant.POJO_FIELD_FEE_MIN.equalsIgnoreCase(k)){
-        //最小值
+        //单笔订单费用最小值
         s = " if(ctx._source."+k+" == null){ctx._source."+k+" = params."+k+"} else { if(ctx._source."+k+" > params."+k+" ){ctx._source."+k+" = params."+k+"}}"
-
       }else if(QRealTimeConstant.POJO_FIELD_MEMBERS.equalsIgnoreCase(k)){
-        //累计出行人数
+        //订单累计出行人数
         s = " if(ctx._source."+k+" != null) {ctx._source."+k +"+= params." + k + "} else { ctx._source."+k+" = params."+k+"} "
       } else if(QRealTimeConstant.POJO_FIELD_ORDERS.equalsIgnoreCase(k)){
-        //s = " ctx._source."+k +" += params."+ k+" "
         s = " if(ctx._source."+k+" != null) { ctx._source."+k+" = params."+k+" } "
       }
       scriptSb.append(s)
     }
 
+    //执行脚本
     val scripts = scriptSb.toString()
     val script = new Script(ScriptType.INLINE, "painless", scripts, params)
-    println(s"script=$script")
+    //println(s"script=$script")
 
+    //ES执行插入或更新操作
     val indexRequest = new IndexRequest(idxName, idxTypeName, esID).source(params)
     val response = transportClient.prepareUpdate(idxName, idxTypeName, esID)
       .setScript(script)
       .setRetryOnConflict(QRealTimeConstant.ES_RETRY_NUMBER)
       .setUpsert(indexRequest)
       .get()
+    //写入异常处理
     if (response.status() != RestStatus.CREATED && response.status() != RestStatus.OK) {
-      System.err.println("calculate es session record error!map:" + new ObjectMapper().writeValueAsString(value))
-      throw new Exception("run script exception:status:" + response.status().name())
+      logger.error("calculate es session record error!scripts:" + scripts)
+      throw new Exception("run exception:status:" + response.status().name())
     }
   }
 

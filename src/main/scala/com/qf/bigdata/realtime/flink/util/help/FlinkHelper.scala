@@ -1,32 +1,40 @@
 package com.qf.bigdata.realtime.flink.util.help
 
 import java.util.Properties
-import java.util.concurrent.TimeUnit
 
 import com.qf.bigdata.realtime.constant.TravelConstant
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
-import com.qf.bigdata.realtime.flink.schema.UserLogsKSchema
-import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.UserLogData
+import com.qf.bigdata.realtime.flink.streaming.assigner.OrdersPeriodicAssigner
+import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun.OrderDetailDataMapFun
+import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderDetailData, QBase}
+import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDimDO.ProductDimDO
+import com.qf.bigdata.realtime.flink.streaming.rdo.typeinformation.QRealTimeDimTypeInformations
 import com.qf.bigdata.realtime.flink.util.es.ESConfigUtil
 import com.qf.bigdata.realtime.flink.util.es.ESConfigUtil.ESConfigHttpHost
 import com.qf.bigdata.realtime.util.PropertyUtil
 import org.apache.flink.api.common.restartstrategy.RestartStrategies
-import org.apache.flink.api.common.serialization.{DeserializationSchema, SimpleStringSchema}
+import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.jdbc.JDBCInputFormat
 import org.apache.flink.api.java.typeutils.RowTypeInfo
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.CheckpointingMode
-import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, KafkaDeserializationSchema}
-import org.apache.flink.streaming.api.scala.{AsyncDataStream, DataStream, StreamExecutionEnvironment}
-import org.apache.flink.streaming.api.scala.async.AsyncFunction
+import org.apache.flink.streaming.api.{CheckpointingMode, TimeCharacteristic}
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, KafkaDeserializationSchema, KafkaSerializationSchema}
+import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.types.Row
 import org.slf4j.{Logger, LoggerFactory}
 import org.apache.flink.api.scala._
-import org.apache.flink.streaming.connectors.kafka.internals.KafkaDeserializationSchemaWrapper
+import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
+import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.connectors.kafka.config.StartupMode
 
+/**
+  * Flink辅助工具类
+  */
 object FlinkHelper {
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger("FlinkHelper")
 
   //默认重启次数
@@ -34,10 +42,11 @@ object FlinkHelper {
 
 
   /**
-    * 流式环境下的flink上下文构建
-    * @param appName
+    * 流式环境flink上下文构建
+    * @param checkPointInterval 检查点时间间隔
+    * @return
     */
-  def createStreamingEnvironment(checkPointInterval :Long) :StreamExecutionEnvironment = {
+  def createStreamingEnvironment(checkPointInterval :Long, tc :TimeCharacteristic, watermarkInterval:Long) :StreamExecutionEnvironment = {
     var env : StreamExecutionEnvironment = null
     try{
       //构建flink批处理上下文对象
@@ -52,8 +61,11 @@ object FlinkHelper {
       //flink服务重启机制
       env.setRestartStrategy(RestartStrategies.fixedDelayRestart(QRealTimeConstant.RESTART_ATTEMPTS,QRealTimeConstant.RESTART_DELAY_BETWEEN_ATTEMPTS))
 
-      //flink
-      //senv.setStateBackend()
+      //时间语义
+      env.setStreamTimeCharacteristic(tc)
+
+      //创建水位时间间隔
+      env.getConfig.setAutoWatermarkInterval(watermarkInterval)
 
     }catch{
       case ex:Exception => {
@@ -67,18 +79,74 @@ object FlinkHelper {
 
   /**
     * flink读取kafka数据
-    * @param env
-    * @param topic
-    * @param properties
+    * @param env flink上下文环境对象
+    * @param topic kafka主题
+    * @param properties kafka消费配置参数
     * @return
     */
-  def createKafkaConsumer(env:StreamExecutionEnvironment, topic:String, properties:Properties) :FlinkKafkaConsumer[String] = {
+  def createKafkaConsumer(env:StreamExecutionEnvironment, topic:String, groupID:String) :FlinkKafkaConsumer[String] = {
     //kafka数据序列化
     val schema = new SimpleStringSchema()
 
-    //创建消费者和消费策略
-    val kafkaConsumer : FlinkKafkaConsumer[String] = new FlinkKafkaConsumer[String](topic, schema, properties)
+    //kafka消费参数
+    val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
+    //重置消费组
+    consumerProperties.setProperty("group.id", groupID)
+
+    //创建kafka消费者
+    val kafkaConsumer : FlinkKafkaConsumer[String] = new FlinkKafkaConsumer[String](topic, schema, consumerProperties)
+
+    //flink消费kafka数据策略：读取最新数据
+    kafkaConsumer.setStartFromLatest()
+
+    //kafka数据偏移量自动提交（默认为true，配合kafka消费参数 enable.auto.commit=true）
+    kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
     kafkaConsumer
+  }
+
+
+  /**
+    * flink读取kafka数据
+    * @param env flink上下文环境对象
+    * @param topic kafka主题
+    * @param schema kafka数据序列化|反序列化
+    * @param properties kafka消费配置参数
+    * @param sm kafka消费策略
+    * @return
+    */
+  def createKafkaSerDeConsumer[T: TypeInformation](env:StreamExecutionEnvironment, topic:String, groupID:String, schema:KafkaDeserializationSchema[T], sm: StartupMode) :FlinkKafkaConsumer[T] = {
+    //kafka消费参数
+    val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
+    //重置消费组
+    consumerProperties.setProperty("group.id", groupID)
+
+    //创建kafka消费者
+    val kafkaConsumer : FlinkKafkaConsumer[T] = new FlinkKafkaConsumer(topic, schema, consumerProperties)
+
+    //flink消费kafka数据策略：读取最新数据
+    if(StartupMode.LATEST.equals(sm)){
+      kafkaConsumer.setStartFromLatest()
+    }else if(StartupMode.EARLIEST.equals(sm)){//flink消费kafka数据策略：读取最早数据
+      kafkaConsumer.setStartFromEarliest()
+    }
+
+    //kafka数据偏移量自动提交（默认为true，配合kafka消费参数 enable.auto.commit=true）
+    kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
+
+    kafkaConsumer
+  }
+
+
+  /**
+    * 事件时间提取(固定有序数据)
+    */
+  def getBoundedAssigner[T <: QBase]():BoundedOutOfOrdernessTimestampExtractor[T] = {
+    val boundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[T](Time.milliseconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
+      override def extractTimestamp(element: T): Long = {
+        element.ct
+      }
+    }
+    boundedAssigner
   }
 
 
@@ -86,7 +154,7 @@ object FlinkHelper {
 
   /**
     * 参数处理工具
-    * @param args
+    * @param args 参数列表
     * @return
     */
   def createParameterTool(args: Array[String]):ParameterTool = {
@@ -96,16 +164,41 @@ object FlinkHelper {
 
 
   /**
+    * 创建产品维表数据流
+    * @param env flink上下文对象
+    * @param sql 查询sql
+    * @param fieldTypes 查询对应的列字段
+    * @return
+    */
+  def createProductDimDStream(env: StreamExecutionEnvironment, sql:String,
+                       fieldTypes: Seq[TypeInformation[_]]): DataStream[ProductDimDO] = {
+    FlinkHelper.createOffLineDataStream(env, sql, fieldTypes).map(
+      row => {
+        val productID = row.getField(0).toString
+        val productLevel = row.getField(1).toString.toInt
+        val productType = row.getField(2).toString
+        val depCode = row.getField(3).toString
+        val desCode = row.getField(4).toString
+        val toursimType = row.getField(5).toString
+        new ProductDimDO(productID, productLevel, productType, depCode, desCode, toursimType)
+      }
+    )
+  }
+
+
+
+
+  /**
     * 创建jdbc数据源输入格式
-    * @param driver
-    * @param username
-    * @param passwd
+    * @param driver jdbc连接驱动
+    * @param username jdbc连接用户名
+    * @param passwd jdbc连接密码
     * @return
     */
   def createJDBCInputFormat(driver:String, url:String, username:String, passwd:String,
-                            query:String, fieldTypes: Seq[TypeInformation[_]]): JDBCInputFormat = {
+                            sql:String, fieldTypes: Seq[TypeInformation[_]]): JDBCInputFormat = {
 
-    //记录列信息
+    //sql查询语句对应字段类型列表
     val rowTypeInfo = new RowTypeInfo(fieldTypes:_*)
 
     //数据源提取
@@ -115,7 +208,7 @@ object FlinkHelper {
       .setUsername(username)
       .setPassword(passwd)
       .setRowTypeInfo(rowTypeInfo)
-      .setQuery(query)
+      .setQuery(sql)
       .finish();
 
     jdbcInputFormat
@@ -124,15 +217,19 @@ object FlinkHelper {
 
   /**
     * 维度数据加载
-    * @param env
-    * @param sql
-    * @param fieldTypes
+    * @param env flink上下文环境对象
+    * @param sql 查询语句
+    * @param fieldTypes 查询语句对应字段类型列表
     * @return
     */
   def createOffLineDataStream(env: StreamExecutionEnvironment, sql:String, fieldTypes: Seq[TypeInformation[_]]):DataStream[Row] = {
     //JDBC属性
     val mysqlDBProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.MYSQL_CONFIG_URL)
+
+    //flink-jdbc包支持的jdbc输入格式
     val jdbcInputFormat : JDBCInputFormat= FlinkHelper.createJDBCInputFormat(mysqlDBProperties, sql, fieldTypes)
+
+    //jdbc数据读取后形成数据流[其中Row为数据类型，类似jdbc]
     val jdbcDataStream :DataStream[Row] = env.createInput(jdbcInputFormat)
     jdbcDataStream
   }
@@ -141,19 +238,22 @@ object FlinkHelper {
 
   /**
     * 创建jdbc数据源输入格式
-    * @param properties
-    * @param query
-    * @param fieldTypes
+    * @param properties jdbc连接参数
+    * @param sql 查询语句
+    * @param fieldTypes 查询语句对应字段类型列表
     * @return
     */
-  def createJDBCInputFormat(properties:Properties, query:String, fieldTypes: Seq[TypeInformation[_]]): JDBCInputFormat = {
+  def createJDBCInputFormat(properties:Properties, sql:String, fieldTypes: Seq[TypeInformation[_]]): JDBCInputFormat = {
+    //jdbc连接参数
     val driver :String = properties.getProperty(TravelConstant.FLINK_JDBC_DRIVER_MYSQL_KEY)
     val url :String = properties.getProperty(TravelConstant.FLINK_JDBC_URL_KEY)
     val user:String = properties.getProperty(TravelConstant.FLINK_JDBC_USERNAME_KEY)
     val passwd:String = properties.getProperty(TravelConstant.FLINK_JDBC_PASSWD_KEY)
 
+    //flink-jdbc包支持的jdbc输入格式
     val jdbcInputFormat : JDBCInputFormat = createJDBCInputFormat(driver, url, user, passwd,
-      query, fieldTypes)
+      sql, fieldTypes)
+
     jdbcInputFormat
   }
 
@@ -171,8 +271,8 @@ object FlinkHelper {
 
   /**
     * 字符拼凑
-    * @param sep
-    * @param params
+    * @param sep 拼接符号
+    * @param params 拼接数据(类似可变数组)
     * @return
     */
   def concat(sep:String, params:String*):String ={
@@ -190,7 +290,39 @@ object FlinkHelper {
   }
 
 
+  /**
+    * 旅游产品实时明细数据流
+    * @param groupID 消费分组
+    * @param fromTopic kafka消费主题
+    * @param tc 数据流时间语义
+    * @return
+    */
+  def createOrderDetailDStream(env: StreamExecutionEnvironment, groupID:String, fromTopic:String, timeChar :TimeCharacteristic):DataStream[OrderDetailData] ={
+    /**
+      * kafka流式数据源
+      * kafka消费配置参数
+      * kafka消费策略
+      */
+    val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, groupID)
 
+
+    /**
+      * 旅游产品订单数据
+      *   (1) kafka数据源(原始明细数据)->转换操作
+      *   (2) 设置执行任务并行度
+      *   (3) 设置水位及事件时间(如果时间语义为事件时间)
+      */
+    //固定范围的水位指定(注意时间单位)
+    var orderDetailDStream :DataStream[OrderDetailData] = env.addSource(kafkaConsumer)
+      .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+      .map(new OrderDetailDataMapFun())
+    if(TimeCharacteristic.EventTime.equals(timeChar)){
+      val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
+      orderDetailDStream  = orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
+    }
+
+    orderDetailDStream
+  }
 
 
 }

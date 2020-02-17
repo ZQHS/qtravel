@@ -6,6 +6,16 @@ package com.qf.bigdata.realtime.flink.streaming.rdo
 object QRealTimeDO {
 
   /**
+    * 抽象基类
+    * @param ct
+    */
+  abstract class QBase{
+    def ct:Long
+  }
+
+
+
+  /**
     * 用户行为日志维表数据
     */
   case class ActionDim(code:String, desc:String, remark:String)
@@ -127,13 +137,15 @@ object QRealTimeDO {
 
   //===订单业务=================================================================================
 
+
+
   /**
     *订单明细数据
     */
   case class OrderDetailData(orderID:String, userID:String, productID:String, pubID:String,
                              userMobile:String, userRegion:String, traffic:String, trafficGrade:String, trafficType:String,
                              price:Int, fee:Int, hasActivity:String,
-                             adult:String, yonger:String, baby:String, ct:Long)
+                             adult:String, yonger:String, baby:String, ct:Long) extends QBase
 
   case class OrderDetailSimData(orderID:String, userID:String, productID:String, pubID:String,
                              userRegion:String, traffic:String,

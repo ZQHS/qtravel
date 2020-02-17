@@ -1437,13 +1437,20 @@ public class CommonUtil {
 		return areaCodes;
 	}
 
+	public static String replaceRedisKey(String key) {
+		String result = key;
+		if(StringUtils.isNotEmpty(key)){
+			result = key.replaceAll("\\.","_");
+		}
+		return result;
+	}
 
 
     public static void main(String[] args) {
 
-//
-//		String rs = formatDate(parseText(dt, formater),formater);
-//		System.out.println(rs);
+		String key = "travel.dim_product1";
+		String rs = replaceRedisKey(key);
+		System.out.println(rs);
 
     }
 

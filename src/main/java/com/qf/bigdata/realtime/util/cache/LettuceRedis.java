@@ -12,12 +12,17 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * redis客户端框架Lettuce
  */
 public class LettuceRedis implements Serializable {
 
+    //超时时间
+    private static final int timeout = 10;
+
+    //客户端
     private static RedisClient client;
 
     public static RedisClient connectRedisLettuce(String ip, int port, String auth){
@@ -25,9 +30,16 @@ public class LettuceRedis implements Serializable {
         return client;
     }
 
+    /**
+     * redis连接
+     * @param ip
+     * @param port
+     * @param auth
+     */
     public static void connectRedis(String ip, int port, String auth){
         client = RedisClient.create(RedisURI.create(ip, port));
         StatefulRedisConnection<String,String> conn = client.connect();
+        conn.setTimeout(timeout, TimeUnit.MINUTES);
         RedisCommands<String,String> command = conn.sync();
         command.auth(auth);
     }
@@ -36,7 +48,7 @@ public class LettuceRedis implements Serializable {
 
     public static void main(String[] args) {
 
-        String ip = "node243";
+        String ip = "node11";
         int port = 6379;
         String auth = "qfqf";
         RedisClient client = connectRedisLettuce(ip, port, auth);
@@ -45,11 +57,11 @@ public class LettuceRedis implements Serializable {
         command.auth(auth);
 
 //        //查询数据
-//        String singleValue = CommonUtil.getRadomIP();
-//        String key = "testnum2";
-//        command.set(key, singleValue);
-//        String redisValue = command.get(key);
-//        System.out.println("redisValue=" + redisValue);
+        String singleValue = CommonUtil.getRadomIP();
+        String key = "testnum2";
+        command.set(key, singleValue);
+        String redisValue = command.get(key);
+        System.out.println("redisValue=" + redisValue);
 //
 //        //复杂数据类型
 //        //String mapKey = "qf_nshop.t_test".replaceAll("\\.","_");
@@ -75,11 +87,11 @@ public class LettuceRedis implements Serializable {
 //        }
 
         //========================================
-        String pubTable = "travel.dim_pub1";
-        String pubID = "210480222|1a1bd08f";
-        Map<String,String> redisPubData = command.hgetall(pubTable);
-        String pubValue = redisPubData.get(pubID);
-        System.out.println("redis.pub =" + pubID + " , pubValue=" + pubValue);
+        String productTable = "travel.dim_product1";
+        String productID = "210602273";
+        Map<String,String> redisPubData = command.hgetall(productTable);
+        String pubValue = redisPubData.get(productID);
+        System.out.println("redis.pub =" + productID + " , pubValue=" + pubValue);
 
 
 

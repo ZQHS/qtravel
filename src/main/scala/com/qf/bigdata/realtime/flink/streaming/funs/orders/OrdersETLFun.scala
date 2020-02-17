@@ -15,7 +15,7 @@ import org.apache.flink.util.Collector
 
 
 /**
-  * 旅游订单业务相互的自定义函数
+  * 旅游订单业务ETL相关函数
   */
 object OrdersETLFun {
 
@@ -155,27 +155,39 @@ object OrdersETLFun {
 
 
 
+
   /**
-    * 订单数据广播处理
-    * 订单开窗宽表数据
+    * 旅游产品维表广播数据处理函数
+    * @param bcName 旅游产品维表广播描述名称
     */
   class OrderWideBCFunction(bcName:String) extends BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]{
 
+    //旅游产品维表广播描述对象
     val productMSDesc = new MapStateDescriptor[String,ProductDimDO](bcName, createTypeInformation[String], createTypeInformation[ProductDimDO])
 
-    //维度数据收集器
+    //旅游产品维表数据收集器
     var products :Seq[ProductDimDO] = List[ProductDimDO]()
 
 
+    /**
+      * 函数初始化
+      * @param parameters
+      */
     override def open(parameters: Configuration): Unit = {
       super.open(parameters)
     }
 
-    //流式数据处理
+    /**
+      * 数据处理逻辑
+      * @param value 产品订单实时数据
+      * @param ctx 广播处理函数
+      * @param out 数据输出
+      */
     override def processElement(value: OrderDetailData, ctx: BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]#ReadOnlyContext, out: Collector[OrderWideData]): Unit = {
-
+      //获取广播数据状态
       val productBState :ReadOnlyBroadcastState[String,ProductDimDO] = ctx.getBroadcastState(productMSDesc);
 
+      //从产品订单实时数据中提取【产品ID】匹配广播维表数据
       val orderProductID :String = value.productID
       if(productBState.contains(orderProductID)){
         val productDimDO :ProductDimDO = productBState.get(orderProductID)
@@ -194,9 +206,8 @@ object OrdersETLFun {
 
         //println(s"""orderWide=${JsonUtil.gObject2Json(orderWide)}""")
         out.collect(orderWide)
-
       }else{
-        //println(s"""OrderWideBCFunction.productid[${orderProductID}] not match !""")
+        //对于未匹配上的实时数据需要有默认值进行补救处理
         val notMatch = "-1"
 
         val orderWide = OrderWideData(value.orderID, value.userID, value.productID, value.pubID,
@@ -210,7 +221,7 @@ object OrdersETLFun {
     }
 
 
-    //广播数据处理
+    //广播维表数据收集
     override def processBroadcastElement(value: ProductDimDO, ctx: BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]#Context, out: Collector[OrderWideData]): Unit = {
       val productBState :BroadcastState[String, ProductDimDO] = ctx.getBroadcastState(productMSDesc);
       products = products.:+(value)
@@ -229,12 +240,16 @@ object OrdersETLFun {
     */
   class OrderWideAsyncBCFunction(bcName:String) extends BroadcastProcessFunction[OrderDetailData, Row, OrderWideData]{
 
+    //产品维表广播数据的描述对象
     val productMSDesc = new MapStateDescriptor[String,Row](bcName, createTypeInformation[String], createTypeInformation[Row])
 
     //维度数据收集器
     var products :Seq[Row] = List[Row]()
 
-
+    /**
+      * 初始化操作
+      * @param parameters
+      */
     override def open(parameters: Configuration): Unit = {
       super.open(parameters)
     }

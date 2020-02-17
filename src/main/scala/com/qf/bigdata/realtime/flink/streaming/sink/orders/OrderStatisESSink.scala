@@ -16,19 +16,21 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
-  * 自定义ES Sink
-  * 对应业务点：基于订单统计输出
+  * 自定义ES Sink(数据元素以case class)
+  * 基于订单统计数据输出
   */
 class OrderStatisESSink(indexName:String) extends RichSinkFunction[OrderTrafficDimMeaData] {
 
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger(this.getClass)
 
+  //ES客户端连接对象
   var transportClient: PreBuiltTransportClient = _
 
 
   /**
-    * 连接es集群
+    * 初始化：连接ES集群
     * @param parameters
     */
   override def open(parameters: Configuration): Unit = {
@@ -50,21 +52,20 @@ class OrderStatisESSink(indexName:String) extends RichSinkFunction[OrderTrafficD
       val viewData = JsonUtil.object2json(value)
       val checkResult: String = checkData(viewData)
       if (StringUtils.isNotBlank(checkResult)) {
-        //日志记录
         logger.error("Travel.ESRecord.sink.checkData.err{}", checkResult)
         return
       }
 
-      //记录信息
+      //转换数据格式为ES支持的map结构
       val record :java.util.Map[String,String] = JsonUtil.json2object(viewData, classOf[java.util.Map[String,String]])
 
-      //请求id
+      //创建ES索引ID
       val productID = value.productID
       val traffic = value.traffic
       val tmp = productID + traffic
       val id = CommonUtil.getMD5AsHex(tmp.getBytes)
 
-      //索引名称、类型名称
+      //将数据写入ES集群
       handleData(indexName, indexName, id, record)
 
     }catch{
@@ -74,21 +75,24 @@ class OrderStatisESSink(indexName:String) extends RichSinkFunction[OrderTrafficD
 
   /**
     * ES插入或更新数据
-    * @param idxName
-    * @param idxTypeName
-    * @param esID
-    * @param value
+    * @param idxName 索引名称
+    * @param idxTypeName 索引类型名
+    * @param esID 索引ID
+    * @param value 写入数据
     */
   def handleData(idxName :String, idxTypeName :String, esID :String,
                  value: java.util.Map[String,String]): Unit ={
+    //es索引操作对象
     val indexRequest = new IndexRequest(idxName, idxName, esID).source(value)
+    //es更新操作结果
     val response = transportClient.prepareUpdate(idxName, idxName, esID)
       .setRetryOnConflict(QRealTimeConstant.ES_RETRY_NUMBER)
       .setDoc(value)
       .setUpsert(indexRequest)
       .get()
+    //写入异常处理
     if (response.status() != RestStatus.CREATED && response.status() != RestStatus.OK) {
-      System.err.println("calculate es session record error!map:" + new ObjectMapper().writeValueAsString(value))
+      logger.error("calculate es session record error!map:" + new ObjectMapper().writeValueAsString(value))
       throw new Exception("run exception:status:" + response.status().name())
     }
   }
@@ -117,7 +121,6 @@ class OrderStatisESSink(indexName:String) extends RichSinkFunction[OrderTrafficD
 
     //转换为Map结构
     val record :java.util.Map[String,String] = JsonUtil.json2object(value, classOf[java.util.Map[String,String]])
-
 
     //行为类型
     val action = record.get(QRealTimeConstant.KEY_ACTION)

@@ -1637,10 +1637,11 @@ location '/data/qf/travel/mid/mid_travel_scenic_common/'
 
 ```scala
 /**
-    * 流式环境下的flink上下文构建
-    * @param appName
+    * 流式环境flink上下文构建
+    * @param checkPointInterval 检查点时间间隔
+    * @return
     */
-  def createStreamingEnvironment(checkPointInterval :Long) :StreamExecutionEnvironment = {
+  def createStreamingEnvironment(checkPointInterval :Long, tc :TimeCharacteristic, watermarkInterval:Long) :StreamExecutionEnvironment = {
     var env : StreamExecutionEnvironment = null
     try{
       //构建flink批处理上下文对象
@@ -1653,8 +1654,13 @@ location '/data/qf/travel/mid/mid_travel_scenic_common/'
       env.enableCheckpointing(checkPointInterval, CheckpointingMode.EXACTLY_ONCE)
 
       //flink服务重启机制
-  env.setRestartStrategy(RestartStrategies.fixedDelayRestart(QRealTimeConstant.RESTART_ATTEMPTS,QRealTimeConstant.RESTART_DELAY_BETWEEN_ATTEMPTS))
+      env.setRestartStrategy(RestartStrategies.fixedDelayRestart(QRealTimeConstant.RESTART_ATTEMPTS,QRealTimeConstant.RESTART_DELAY_BETWEEN_ATTEMPTS))
 
+      //时间语义
+      env.setStreamTimeCharacteristic(tc)
+
+      //创建水位时间间隔
+      env.getConfig.setAutoWatermarkInterval(watermarkInterval)
 
     }catch{
       case ex:Exception => {
@@ -1770,23 +1776,75 @@ auto.commit.interval.ms= 2000
 
 #### Kafka-Flink消费
 
+- 基于字符串(kafka数据)的消费方式
+
 ```scala
 /**
     * flink读取kafka数据
-    * @param env
-    * @param topic
-    * @param properties
+    * @param env flink上下文环境对象
+    * @param topic kafka主题
+    * @param properties kafka消费配置参数
     * @return
     */
-  def createKafkaConsumer(env:StreamExecutionEnvironment, topic:String, properties:Properties) :FlinkKafkaConsumer[String] = {
+  def createKafkaConsumer(env:StreamExecutionEnvironment, topic:String, groupID:String) :FlinkKafkaConsumer[String] = {
     //kafka数据序列化
     val schema = new SimpleStringSchema()
 
-    //创建消费者和消费策略
-    val kafkaConsumer : FlinkKafkaConsumer[String] = new FlinkKafkaConsumer[String](topic, schema, properties)
+    //kafka消费参数
+    val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
+    //重置消费组
+    consumerProperties.setProperty("group.id", groupID)
+
+    //创建kafka消费者
+    val kafkaConsumer : FlinkKafkaConsumer[String] = new FlinkKafkaConsumer[String](topic, schema, consumerProperties)
+
+    //flink消费kafka数据策略：读取最新数据
+    kafkaConsumer.setStartFromLatest()
+
+    //kafka数据偏移量自动提交（默认为true，配合kafka消费参数 enable.auto.commit=true）
+    kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
     kafkaConsumer
   }
 ```
+
+
+
+- 基于自定义实现序列化反序列化(kafka数据)的消费方式
+
+```scala
+/**
+    * flink读取kafka数据
+    * @param env flink上下文环境对象
+    * @param topic kafka主题
+    * @param schema kafka数据序列化|反序列化
+    * @param properties kafka消费配置参数
+    * @param sm kafka消费策略
+    * @return
+    */
+  def createKafkaSerDeConsumer[T: TypeInformation](env:StreamExecutionEnvironment, topic:String, groupID:String, schema:KafkaDeserializationSchema[T], sm: StartupMode) :FlinkKafkaConsumer[T] = {
+    //kafka消费参数
+    val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
+    //重置消费组
+    consumerProperties.setProperty("group.id", groupID)
+
+    //创建kafka消费者
+    val kafkaConsumer : FlinkKafkaConsumer[T] = new FlinkKafkaConsumer(topic, schema, consumerProperties)
+
+    //flink消费kafka数据策略：读取最新数据
+    if(StartupMode.LATEST.equals(sm)){
+      kafkaConsumer.setStartFromLatest()
+    }else if(StartupMode.EARLIEST.equals(sm)){//flink消费kafka数据策略：读取最早数据
+      kafkaConsumer.setStartFromEarliest()
+    }
+
+    //kafka数据偏移量自动提交（默认为true，配合kafka消费参数 enable.auto.commit=true）
+    kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
+
+    kafkaConsumer
+  }
+```
+
+
 
 
 
@@ -1808,15 +1866,15 @@ jdbc.url=jdbc:mysql://10.0.88.242:3306/travel?serverTimezone=UTC&characterEncodi
 ```scala
 /**
     * 创建jdbc数据源输入格式
-    * @param driver
-    * @param username
-    * @param passwd
+    * @param driver jdbc连接驱动
+    * @param username jdbc连接用户名
+    * @param passwd jdbc连接密码
     * @return
     */
   def createJDBCInputFormat(driver:String, url:String, username:String, passwd:String,
-                            query:String, fieldTypes: Seq[TypeInformation[_]]): JDBCInputFormat = {
+                            sql:String, fieldTypes: Seq[TypeInformation[_]]): JDBCInputFormat = {
 
-    //记录列信息
+    //sql查询语句对应字段类型列表
     val rowTypeInfo = new RowTypeInfo(fieldTypes:_*)
 
     //数据源提取
@@ -1826,7 +1884,7 @@ jdbc.url=jdbc:mysql://10.0.88.242:3306/travel?serverTimezone=UTC&characterEncodi
       .setUsername(username)
       .setPassword(passwd)
       .setRowTypeInfo(rowTypeInfo)
-      .setQuery(query)
+      .setQuery(sql)
       .finish();
 
     jdbcInputFormat
@@ -1835,15 +1893,19 @@ jdbc.url=jdbc:mysql://10.0.88.242:3306/travel?serverTimezone=UTC&characterEncodi
 
   /**
     * 维度数据加载
-    * @param env
-    * @param sql
-    * @param fieldTypes
+    * @param env flink上下文环境对象
+    * @param sql 查询语句
+    * @param fieldTypes 查询语句对应字段类型列表
     * @return
     */
   def createOffLineDataStream(env: StreamExecutionEnvironment, sql:String, fieldTypes: Seq[TypeInformation[_]]):DataStream[Row] = {
     //JDBC属性
     val mysqlDBProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.MYSQL_CONFIG_URL)
+
+    //flink-jdbc包支持的jdbc输入格式
     val jdbcInputFormat : JDBCInputFormat= FlinkHelper.createJDBCInputFormat(mysqlDBProperties, sql, fieldTypes)
+
+    //jdbc数据读取后形成数据流[其中Row为数据类型，类似jdbc]
     val jdbcDataStream :DataStream[Row] = env.createInput(jdbcInputFormat)
     jdbcDataStream
   }
@@ -1852,19 +1914,22 @@ jdbc.url=jdbc:mysql://10.0.88.242:3306/travel?serverTimezone=UTC&characterEncodi
 
   /**
     * 创建jdbc数据源输入格式
-    * @param properties
-    * @param query
-    * @param fieldTypes
+    * @param properties jdbc连接参数
+    * @param sql 查询语句
+    * @param fieldTypes 查询语句对应字段类型列表
     * @return
     */
-  def createJDBCInputFormat(properties:Properties, query:String, fieldTypes: Seq[TypeInformation[_]]): JDBCInputFormat = {
+  def createJDBCInputFormat(properties:Properties, sql:String, fieldTypes: Seq[TypeInformation[_]]): JDBCInputFormat = {
+    //jdbc连接参数
     val driver :String = properties.getProperty(TravelConstant.FLINK_JDBC_DRIVER_MYSQL_KEY)
     val url :String = properties.getProperty(TravelConstant.FLINK_JDBC_URL_KEY)
     val user:String = properties.getProperty(TravelConstant.FLINK_JDBC_USERNAME_KEY)
     val passwd:String = properties.getProperty(TravelConstant.FLINK_JDBC_PASSWD_KEY)
 
+    //flink-jdbc包支持的jdbc输入格式
     val jdbcInputFormat : JDBCInputFormat = createJDBCInputFormat(driver, url, user, passwd,
-      query, fieldTypes)
+      sql, fieldTypes)
+
     jdbcInputFormat
   }
 ```
@@ -1882,154 +1947,7 @@ jdbc.url=jdbc:mysql://10.0.88.242:3306/travel?serverTimezone=UTC&characterEncodi
 注释：com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 ```
 
-```scala
-//常数1
-val COMMON_NUMBER_ZERO : Long = Long.box(0l)
-val COMMON_NUMBER_ZERO_INT : Int = Int.box(0)
-val COMMON_NUMBER_ONE : Long = Long.box(1l)
-val COMMON_AGG_ZERO : Double = Double.box(0.0d)
-val COMMON_MAX_COUNT : Long = Long.box(100)
 
-
-//kafka消费者配置文件
-val KAFKA_CONSUMER_CONFIG_URL = "kafka/flink/kafka-consumer.properties"
-//kafka生产者配置文件
-val KAFKA_PRODUCER_CONFIG_URL = "kafka/flink/kafka-producer.properties"
-
-
-//mysql属性文件
-val MYSQL_CONFIG_URL = "jdbc.properties"
-
-
-//flink最大乱序时间
-val FLINK_WATERMARK_MAXOUTOFORDERNESS = 5 * 1000l
-
-//flink水位间隔时间
-val FLINK_WATERMARK_INTERVAL = 5 * 1000l
-
-//flink窗口大小
-val FLINK_WINDOW_SIZE :Long = 5 * 1
-val FLINK_WINDOW_MAX_SIZE :Long = 60 * 1
-
-//flink滑动窗口大小
-val FLINK_SLIDE_WINDOW_SIZE :Long= 10l
-val FLINK_SLIDE_INTERVAL_SIZE :Long= 5l
-
-//flink检查点间隔
-val FLINK_CHECKPOINT_INTERVAL :Long = 20 * 1000l
-
-//flink延时设置
-val FLINK_ALLOWED_LATENESS :Long = 10l
-
-
-//本地模型下的默认并行度(cpu core)
-val DEF_LOCAL_PARALLELISM  = Runtime.getRuntime.availableProcessors
-
-//flink服务重启策略相关参数
-val RESTART_ATTEMPTS :Int = 5
-val RESTART_DELAY_BETWEEN_ATTEMPTS :Long = 1000L * 10L
-
-//广播变量名称
-val BC_ACTIONS = "bc_actions"
-val BC_PRODUCT = "bc_product"
-val BC_PRODUCT_ASYNC = "bc_product_sync"
-
-//外部传参名称
-val PARAMS_KEYS_APPNAME = "appname"
-val PARAMS_KEYS_GROUPID = "gruopid"
-val PARAMS_KEYS_TOPIC_FROM = "from_topic"
-val PARAMS_KEYS_TOPIC_TO = "to_topic"
-val PARAMS_KEYS_INDEX_NAME = "index"
-
-
-//kafka参数
-val TOPIC_LOG_ODS = "topic_log_ods"
-
-val TOPIC_LOG_ACTION_VIEW = "topic_log_action_view"
-val TOPIC_LOG_ACTION_VIEW_STATIS = "topic_log_action_view_statis"
-
-val TOPIC_LOG_ACTION_CLICK = "topic_log_action_click"
-val TOPIC_LOG_ACTION_LAUNCH = "topic_log_action_launch"
-val TOPIC_LOG_ACTION_PAGE_ENTER = "topic_log_action_page_enter"
-val TOPIC_LOG_ACTION_VIEWLIST = "topic_log_action_viewlist"
-
-val TOPIC_LOG_ACTION_LAUNCH_WARN = "topic_log_action_launch_warn"
-
-val TOPIC_ORDER_ODS = "topic_orders_ods"
-val TOPIC_ORDER_DW_WIDE = "topic_orders_dw_wide"
-val TOPIC_ORDER_DM = "topic_orders_dm"
-val TOPIC_ORDER_DM_STATIS = "topic_orders_dm_statis"
-
-val TOPIC_ORDER_MID = "topic_orders_mid"
-
-//测流输出
-val OUTPUT_TAG_LOG_PAGEVIEW = "output_tag_pageview_lowDuration"
-
-//===es索引 旅游产品订单=====================================
-
-val ES_INDEX_NAME_ORDER_DETAIL = "travel_order_detail"
-val ES_INDEX_NAME_ORDER_AGG = "travel_order_agg"
-val ES_INDEX_NAME_ORDER_WIN_STATIS = "travel_order_win_statis"
-val ES_INDEX_NAME_ORDER_CUSTOMER_STATIS = "travel_order_customer_statis"
-
-val ES_INDEX_NAME_ORDER_WIDE_DETAIL = "travel_order_wide"
-val ES_INDEX_NAME_ORDER_WIDE_AGG = "travel_order_wide_agg"
-
-//===es索引 用户日志=====================================
-//启动日志聚合数据对应es索引名称
-val ES_INDEX_NAME_LOG_LAUNCH_AGG = "travel_log_launch_agg"
-
-//页面浏览日志明细数据对应es索引名称
-val ES_INDEX_NAME_LOG_VIEW = "travel_log_pageview"
-val ES_INDEX_NAME_LOG_VIEW_LOW = "travel_log_pageview_low"
-
-//用户日志点击行为明细数据对应es索引名称
-val ES_INDEX_NAME_LOG_CLICK = "travel_log_click"
-val ES_INDEX_NAME_LOG_CLICK_STATIS = "travel_log_click_statis"
-
-//ES集群配置文件
-val ES_CONFIG_PATH = "es/es-config.json"
-val KEY_ES_ID = "id"
-
-//ES同记录写入并发重试次数
-val ES_RETRY_NUMBER = 15
-
-//ES索引中的时间列
-val esCt = "es_ct"
-val esUt = "es_ut"
-
-val ES_PV = "view_count"
-val ES_MAX = "max_metric"
-val ES_MIN = "min_metric"
-val ES_ORDERS = "orders"
-
-
-val DYNC_DBCONN_TIMEOUT = 1
-val DYNC_DBCONN_CAPACITY = 3
-
-
-//时间格式
-val FORMATTER_YYYYMMDD: String = "yyyyMMdd"
-val FORMATTER_YYYYMMDD_MID: String = "yyyy-MM-dd"
-val FORMATTER_YYYYMMDDHH: String = "yyyyMMddHH"
-val FORMATTER_YYYYMMDDHHMMSS: String = "yyyyMMddHHmmss"
-
-//实时采集参数
-val RM_REC_ROLLOVER_INTERVAL :Long = 15L
-val RM_REC_INACTIVITY_INTERVAL :Long = 5L
-val RM_REC_MAXSIZE :Long = 128L
-val RM_REC_BUCKET_CHECK_INTERVAL :Long = 5L
-
-val KEY_RM_REC_OUTPUT :String = "output"
-val KEY_RM_REC_ROLLOVER_INTERVAL :String = "rollover_interval"
-val KEY_RM_REC_INACTIVITY_INTERVAL :String = "inactivity_interval"
-val KEY_RM_REC_MAXSIZE :String = "max_size"
-val KEY_RM_REC_BUCKET_CHECK_INTERVAL :String = "bucket_check_interval"
-
-val KEY_RM_TIME_RANGE :String = "time_range"
-val KEY_RM_LAUNCH_COUNT :String = "launch_count"
-
-```
 
 
 
@@ -2049,13 +1967,19 @@ val KEY_RM_LAUNCH_COUNT :String = "launch_count"
 
 ##### 读取消息队列数据
 
-(1) 创建Flink实时上下文环境对象(【构建实时上下文环境对象】上列已有不再重复)
+(1) 创建Flink实时上下文环境对象
 
 ```scala
-//1 flink环境初始化使用处理时间做处理参考
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime)
-      env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
+/**
+ * 1 Flink环境初始化
+ *   流式处理的时间特征依赖(使用事件时间)
+ */
+//注意：检查点时间间隔单位：毫秒
+val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+val tc = TimeCharacteristic.EventTime
+val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, tc, watermarkInterval)
+
 ```
 
 
@@ -2083,18 +2007,23 @@ Flink读取kafka采用的是connector方式
 ###### kafka消费方式
 
 ```scala
-//2 kafka流式数据源
+//kafka消费参数
 val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
+    
+//重置消费组
+consumerProperties.setProperty("group.id", groupID)
 
-//创建消费者和消费策略
-val schema:KafkaDeserializationSchema[UserLogData] = new UserLogsKSchema(fromTopic)
+//创建kafka消费者
+val kafkaConsumer : FlinkKafkaConsumer[T] = new FlinkKafkaConsumer(topic, schema, consumerProperties)
 
-val kafkaConsumer : FlinkKafkaConsumer[UserLogData] = new FlinkKafkaConsumer[UserLogData](fromTopic, schema, consumerProperties)
-      kafkaConsumer.setStartFromLatest()
+//flink消费kafka数据策略：读取最新数据
+if(StartupMode.LATEST.equals(sm)){
+    kafkaConsumer.setStartFromLatest()
+}else if(StartupMode.EARLIEST.equals(sm)){//flink消费kafka数据策略：读取最早数据
+    kafkaConsumer.setStartFromEarliest()
+}
 
-
-//消费方式：最早消息、最近消息、偏移量定位
-kafkaConsumer.setStartFromLatest()
+//kafka数据偏移量自动提交（默认为true，配合kafka消费参数 enable.auto.commit=true）
 kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
 ```
 
@@ -2258,7 +2187,7 @@ val clickDStream :DataStream[UserLogClickData] = dStream.filter(
 
 ```scala
 /**
-    * 用户日志点击数据实时数据转换
+    * 用户日志点击数据实时数据转换（日志数据 -> 点击日志）
     */
   class UserLogClickDataMapFun extends MapFunction[UserLogData,UserLogClickData]{
 
@@ -2373,13 +2302,17 @@ case class UserLogClickData(sid:String, userDevice:String, userDeviceType:String
 ###### kafka数据反序列化
 
 ```scala
-//创建消费者和消费策略
+ /**
+  * 2 kafka流式数据源
+  *   kafka消费配置参数
+  *   kafka消费策略
+  *   创建flink消费对象FlinkKafkaConsumer
+  *   用户行为日志(kafka数据)反序列化处理
+  */
 val schema:KafkaDeserializationSchema[UserLogViewListData] = new UserLogsViewListKSchema(fromTopic)
-    
-val kafkaConsumer : FlinkKafkaConsumer[UserLogViewListData] = new FlinkKafkaConsumer[UserLogViewListData](fromTopic, schema, consumerProperties)
-    
-kafkaConsumer.setStartFromLatest()
-kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
+      
+val kafkaConsumer : FlinkKafkaConsumer[UserLogViewListData] = FlinkHelper.createKafkaSerDeConsumer(env, fromTopic, groupID, schema, StartupMode.LATEST)
+
 ```
 
 
@@ -2391,9 +2324,6 @@ kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
   * 行为日志产品列表浏览数据(原始)kafka序列化
   */
 class UserLogsViewListKSchema(topic:String) extends KafkaSerializationSchema[UserLogViewListData] with KafkaDeserializationSchema[UserLogViewListData] {
-
-  
-
 
   /**
     * 反序列化
@@ -2441,15 +2371,22 @@ class UserLogsViewListKSchema(topic:String) extends KafkaSerializationSchema[Use
 ###### 列表数据处理
 
 ```scala
-//3 实时流数据集合操作
-val dStream :DataStream[UserLogViewListData] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+/**
+ * 3 创建【产品列表浏览】日志数据流
+ *   (1) 基于处理时间的实时计算：ProcessingTime
+ *   (2) 数据过滤
+ *   (3) 数据转换
+ */
+val viewListFactDStream :DataStream[UserLogViewListFactData] = env.addSource(kafkaConsumer)
+   .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+   .filter(
+          (log : UserLogViewListData) => {
+            log.action.equalsIgnoreCase(ActionEnum.INTERACTIVE.getCode) && EventEnum.getViewListEvents.contains(log.eventType)
+          }
+        )
+   .flatMap(new UserLogsViewListFlatMapFun())
+viewListFactDStream.print("=====viewListFactDStream========")
 
-//产品列表浏览
-val viewListFactDStream :DataStream[UserLogViewListFactData] = dStream.filter(
-(log : UserLogViewListData) => {
-	log.action.equalsIgnoreCase(ActionEnum.INTERACTIVE.getCode) && 			EventEnum.getViewListEvents.contains(log.eventType)
-}
-).flatMap(new UserLogsViewListFlatMapFun())
 ```
 
 
@@ -2552,32 +2489,28 @@ case class UserLogViewListFactData(sid:String, userDevice:String,userDeviceType:
 
 #### 业务背景
 
-旅游产品订单 
+旅游产品订单 数据
 
-​		参考 第三章 第一节 【旅游产品订单】
-
-离线数据表
-
-```sql
-create external table if not exists ods_travel.ods_travel_orders (
- user_id string COMMENT '用户ID', 
- user_mobile string COMMENT '用户手机号',
- product_id string COMMENT '旅游产品编号',
- product_traffic string COMMENT '旅游产品交通资源',
- product_traffic_grade string COMMENT '旅游产品交通:座席', 
- product_traffic_type string COMMENT '旅游产品交通:行程种类',   
- product_pub string COMMENT '旅游产品住宿资源', 
- user_region string COMMENT '用户所在区域',  
- travel_member_adult int COMMENT '人员构成_成人人数',
- travel_member_yonger int COMMENT '人员构成_儿童人数',
- travel_member_baby int COMMENT '人员构成_婴儿人数', 
- product_price double COMMENT '产品价格', 
- has_activity double COMMENT '活动特价',   
- product_fee double COMMENT '产品费用', 
- order_ct bigint COMMENT '日志时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_travel_orders/'
+```json
+{
+    "travel_member_adult": "2",
+    "travel_member_baby": "0",
+    "user_region": "130200",
+    "product_fee": "16",
+    "product_price": "6",
+    "product_traffic_grade": "20",
+    "travel_member_yonger": "1",
+    "product_traffic_type": "01",
+    "product_pub": "210759642|2a6f73f4",
+    "order_ct": "1581306968000",
+    "KAFKA_ID": "2301aa70e79831b4b2329d66fba7ce8c",
+    "user_id": "12415",
+    "user_mobile": "19906118410",
+    "has_activity": "9",
+    "product_id": "210759642",
+    "product_traffic": "03",
+    "order_id": "158130696800021075964212415"
+}
 ```
 
 
@@ -2610,7 +2543,7 @@ location '/data/qf/travel/ods/ods_travel_orders/'
 
 查询使用的产品维度信息
 
-下列语句来自QRealTimeConstant
+下列语句来自QRealTimeConstant（注意：项目里使用 【travel.dim_product1】为测试表）
 
 ```scala
 val SQL_PRODUCT = s"""
@@ -2621,7 +2554,7 @@ val SQL_PRODUCT = s"""
         |departure_code,
         |des_city_code,
         |toursim_tickets_type
-        from ${MYDQL_DIM_PRODUCT}
+        from travel.dim_product
       """.stripMargin
 ```
 
@@ -2677,13 +2610,14 @@ object QRealTimeDimTypeInformations {
 
 ```scala
 /**
-      * 2 离线维度数据提取
-      *   旅游产品维度数据
-      */
-    val productDimFieldTypes :List[TypeInformation[_]] = QRealTimeDimTypeInformations.getProductDimFieldTypeInfos()
-    //mysql查询sql
-    val sql = QRealTimeConstant.SQL_PRODUCT
-    val productDS :DataStream[ProductDimDO] = FlinkHelper.createOffLineDataStream(env, sql, productDimFieldTypes).map(
+ * 2 离线维度数据提取
+ *   旅游产品维度数据
+ */
+val productDimFieldTypes :List[TypeInformation[_]] = QRealTimeDimTypeInformations.getProductDimFieldTypeInfos()
+    
+//mysql查询sql
+val sql = QRealTimeConstant.SQL_PRODUCT
+val productDS :DataStream[ProductDimDO] = FlinkHelper.createOffLineDataStream(env, sql, productDimFieldTypes).map(
       (row: Row) => {
         val productID = row.getField(0).toString
         val productLevel = row.getField(1).toString.toInt
@@ -2693,7 +2627,7 @@ object QRealTimeDimTypeInformations {
         val toursimType = row.getField(5).toString
         new ProductDimDO(productID, productLevel, productType, depCode, desCode, toursimType)
       }
-    )
+)
 ```
 
 
@@ -2723,20 +2657,16 @@ val dimProductBCStream :BroadcastStream[ProductDimDO] = productDS.broadcast(prod
 
 ```scala
 /**
- * 4 订单数据
- *   原始明细数据转换操作
+ * 4 旅游产品订单数据
+ *   读取kafka中的原始明细数据并进行转换操作
+ *   设置任务执行并行度setParallelism
+ *   指定水位生成和事件时间(如果时间语义是事件时间的话)
  */
-val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-
-val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
-
-
-/**
- * 5 设置事件时间提取器及水位计算
- *   固定范围的水位指定(注意时间单位)
-*/
-val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
+val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)  
+      
+val orderDetailDStream :DataStream[OrderDetailData] = env.addSource(kafkaConsumer)                                        .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+                                 .map(new OrderDetailDataMapFun())                                                        .assignTimestampsAndWatermarks(ordersPeriodicAssigner)
+orderDetailDStream.print("orderDStream---:") //打印测试
 
 ```
 
@@ -2760,26 +2690,36 @@ val orderWideDStream :DataStream[OrderWideData] = orderDetailDStream.connect(dim
 
 ```scala
 /**
-    * 订单数据广播处理
-    * 订单开窗宽表数据
-    */
-  class OrderWideBCFunction(bcName:String) extends BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]{
+ * 旅游产品维表广播数据处理函数
+ * @param bcName 旅游产品维表广播描述名称
+ */
+class OrderWideBCFunction(bcName:String) extends BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]{
 
-    val productMSDesc = new MapStateDescriptor[String,ProductDimDO](bcName, createTypeInformation[String], createTypeInformation[ProductDimDO])
+//旅游产品维表广播描述对象
+val productMSDesc = new MapStateDescriptor[String,ProductDimDO](bcName, createTypeInformation[String], createTypeInformation[ProductDimDO])
 
-    //维度数据收集器
-    var products :Seq[ProductDimDO] = List[ProductDimDO]()
+//旅游产品维表数据收集器
+var products :Seq[ProductDimDO] = List[ProductDimDO]()
 
-
+    /**
+      * 函数初始化
+      * @param parameters
+      */
     override def open(parameters: Configuration): Unit = {
       super.open(parameters)
     }
 
-    //流式数据处理
-    override def processElement(value: OrderDetailData, ctx: BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]#ReadOnlyContext, out: Collector[OrderWideData]): Unit = {
-
+/**
+ * 数据处理逻辑
+ * @param value 产品订单实时数据
+ * @param ctx 广播处理函数
+ * @param out 数据输出
+ */
+override def processElement(value: OrderDetailData, ctx: BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]#ReadOnlyContext, out: Collector[OrderWideData]): Unit = {
+      //获取广播数据状态
       val productBState :ReadOnlyBroadcastState[String,ProductDimDO] = ctx.getBroadcastState(productMSDesc);
 
+      //从产品订单实时数据中提取【产品ID】匹配广播维表数据
       val orderProductID :String = value.productID
       if(productBState.contains(orderProductID)){
         val productDimDO :ProductDimDO = productBState.get(orderProductID)
@@ -2798,9 +2738,8 @@ val orderWideDStream :DataStream[OrderWideData] = orderDetailDStream.connect(dim
 
         //println(s"""orderWide=${JsonUtil.gObject2Json(orderWide)}""")
         out.collect(orderWide)
-
       }else{
-        //println(s"""OrderWideBCFunction.productid[${orderProductID}] not match !""")
+        //对于未匹配上的实时数据需要有默认值进行补救处理
         val notMatch = "-1"
 
         val orderWide = OrderWideData(value.orderID, value.userID, value.productID, value.pubID,
@@ -2814,8 +2753,8 @@ val orderWideDStream :DataStream[OrderWideData] = orderDetailDStream.connect(dim
     }
 
 
-    //广播数据处理
-    override def processBroadcastElement(value: ProductDimDO, ctx: BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]#Context, out: Collector[OrderWideData]): Unit = {
+//广播维表数据收集
+override def processBroadcastElement(value: ProductDimDO, ctx: BroadcastProcessFunction[OrderDetailData, ProductDimDO, OrderWideData]#Context, out: Collector[OrderWideData]): Unit = {
       val productBState :BroadcastState[String, ProductDimDO] = ctx.getBroadcastState(productMSDesc);
       products = products.:+(value)
 
@@ -2844,35 +2783,32 @@ val orderWideDStream :DataStream[OrderWideData] = orderDetailDStream.connect(dim
 
 ```scala
 /**
-* 3 订单数据
-*   原始明细数据转换操作
-*/
-val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-
-val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
-
-
-/**
-* 4 设置事件时间提取器及水位计算
-*   固定范围的水位指定(注意时间单位)
-*/
+ * 3 旅游产品订单数据
+ *   (1) kafka数据源(原始明细数据)->转换操作
+ *   (2) 设置执行任务并行度
+ *   (3) 设置水位及事件时间(如果时间语义为事件时间)
+ */
+//固定范围的水位指定(注意时间单位)
 val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-    orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
+      
+val orderDetailDStream :DataStream[OrderDetailData] = env.addSource(kafkaConsumer)                                        .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+                                 .map(new OrderDetailDataMapFun())                                                        .assignTimestampsAndWatermarks(ordersPeriodicAssigner)
+
 ```
 
 
 
 ###### 维表数据提取
 
-```
+```scala
 //单维表处理
 val useLocalCache :Boolean = false
 val dbPath = QRealTimeConstant.MYSQL_CONFIG_URL
 val productDBQuery :DBQuery = createProductDBQuery()
 val syncFunc = new DimProductAsyncFunction(dbPath, productDBQuery, useLocalCache)
-1 数据库查询对象封装
-2 要根据实际情况(维表变化频率),结合缓存机制提高处理的效率，另外也可防止意外突发情况(断网、mysql访问无响应等)
-3 在异步IO中定时同步维度数据并构造宽表
+//1 数据库查询对象封装
+//2 要根据实际情况(维表变化频率),结合缓存机制提高处理的效率，另外也可防止意外突发情况(断网、mysql访问无响#应等)
+//3 在异步IO中定时同步维度数据并构造宽表
 ```
 
 
@@ -2925,34 +2861,48 @@ val syncFunc = new DimProductAsyncFunction(dbPath, productDBQuery, useLocalCache
 
 ```scala
 /**
-    * mysql异步读取函数
-    */
-  class DimProductAsyncFunction(dbPath:String, dbQuery:DBQuery, useLocalCache:Boolean) extends RichAsyncFunction[OrderDetailData,OrderWideData] {
-
+ * 产品相关维表异步读取函数(多表)
+*/
+class DimProductMAsyncFunction(dbPath:String, dbQuerys:mutable.Map[String,DBQuery]) extends RichAsyncFunction[OrderDetailData,OrderMWideData] {
+    //mysql连接
     var pool :DBDruid = _
-    val redisIP = "node243"
+
+    //redis连接参数
+    val redisIP = "node11"
     val redisPort = 6379
     val redisPass = "qfqf"
+
+    //redis客户端连接
     var redisClient : RedisClient = _
     var redisConn : StatefulRedisConnection[String,String] = _
     var redisCmd: RedisCommands[String, String] = _
 
-    var localCache: Cache[String, String] = _
+    //定时调度
     var scheduled : ScheduledThreadPoolExecutor = _
-
-
 
     /**
       * 重新加载数据库数据
       */
     def reloadDB():Unit ={
-      val dbResult = pool.execSQLJson(dbQuery.sql, dbQuery.schema, dbQuery.pk)
-      if(useLocalCache){
-        localCache.putAll(dbResult)
-      }else{
+      for(entry <- dbQuerys){
+        val tableKey = entry._1
+        val dbQuery = entry._2
+        val dbResult = pool.execSQLJson(dbQuery.sql, dbQuery.schema, dbQuery.pk)
         val key = dbQuery.table
         redisCmd.hmset(key, dbResult)
       }
+    }
+
+
+    /**
+      * redis连接初始化
+      *
+      */
+    def initRedisConn():Unit = {
+      redisClient = RedisClient.create(RedisURI.create(redisIP, redisPort))
+      redisConn = redisClient.connect
+      redisCmd = redisConn.sync
+      redisCmd.auth(redisPass)
     }
 
 
@@ -2960,39 +2910,36 @@ val syncFunc = new DimProductAsyncFunction(dbPath, productDBQuery, useLocalCache
      * 初始化
      */
     override def open(parameters: Configuration): Unit = {
-       println(s"""MysqlAsyncFunction open.time=${CommonUtil.formatDate4Def(new Date())}""")
-       super.open(parameters)
+      //println(s"""MysqlAsyncFunction open.time=${CommonUtil.formatDate4Def(new Date())}""")
+      super.open(parameters)
 
-        //数据库配置文件
-        val dbProperties = PropertyUtil.readProperties(dbPath)
+      //数据库配置文件
+      val dbProperties = PropertyUtil.readProperties(dbPath)
 
-        val driver = dbProperties.getProperty(TravelConstant.FLINK_JDBC_DRIVER_MYSQL_KEY)
-        val url = dbProperties.getProperty(TravelConstant.FLINK_JDBC_URL_KEY)
-        val user = dbProperties.getProperty(TravelConstant.FLINK_JDBC_USERNAME_KEY)
-        val passwd = dbProperties.getProperty(TravelConstant.FLINK_JDBC_PASSWD_KEY)
+      val driver = dbProperties.getProperty(TravelConstant.FLINK_JDBC_DRIVER_MYSQL_KEY)
+      val url = dbProperties.getProperty(TravelConstant.FLINK_JDBC_URL_KEY)
+      val user = dbProperties.getProperty(TravelConstant.FLINK_JDBC_USERNAME_KEY)
+      val passwd = dbProperties.getProperty(TravelConstant.FLINK_JDBC_PASSWD_KEY)
 
-        //缓存连接
-        pool = new DBDruid(driver, url, user, passwd)
-        scheduled  = new ScheduledThreadPoolExecutor(2)
-        if(useLocalCache){
-          localCache = CacheBuilder.newBuilder.maximumSize(10000).expireAfterAccess(60L, TimeUnit.MINUTES).build[String,String]
-        }else{
-          redisClient = RedisClient.create(RedisURI.create(redisIP, redisPort))
-          redisConn = redisClient.connect
-          redisCmd = redisConn.sync
-          redisCmd.auth(redisPass)
+      //缓存连接
+      pool = new DBDruid(driver, url, user, passwd)
+
+      //redis资源连接初始化
+      initRedisConn()
+
+      //数据初始化加载到缓存
+      reloadDB()
+
+      //定时更新缓存
+      //调度资源
+      scheduled  = new ScheduledThreadPoolExecutor(2)
+      val initialDelay: Long = 0l
+      val period :Long = 60l
+      scheduled.scheduleAtFixedRate(new Runnable {
+        override def run(): Unit = {
+          reloadDB()
         }
-        //数据初始化加载到缓存
-        reloadDB()
-
-        //定时更新缓存
-        val initialDelay: Long = 0l
-        val period :Long = 30l
-       scheduled.scheduleAtFixedRate(new Runnable {
-         override def run(): Unit = {
-           reloadDB()
-         }
-       }, initialDelay, period, TimeUnit.SECONDS)
+      }, initialDelay, period, TimeUnit.SECONDS)
     }
 
 
@@ -3001,42 +2948,61 @@ val syncFunc = new DimProductAsyncFunction(dbPath, productDBQuery, useLocalCache
       * @param input
       * @param resultFuture
       */
-    override def asyncInvoke(input: OrderDetailData, resultFuture: ResultFuture[OrderWideData]): Unit = {
+    override def asyncInvoke(input: OrderDetailData, resultFuture: ResultFuture[OrderMWideData]): Unit = {
       try {
-        println(s"""MysqlAsyncFunction invoke.time=${CommonUtil.formatDate4Def(new Date())}""")
-        val orderProductID = input.productID
-        var productInfo :String = ""
-        if(useLocalCache){
-          productInfo = localCache.getIfPresent(orderProductID)
-        }else{
-          val key = dbQuery.table
-          val dataJson : util.Map[String,String] = redisCmd.hgetall(key)
-          productInfo =  dataJson.getOrDefault(orderProductID,"")
+        //println(s"""MysqlAsyncFunction invoke.time=${CommonUtil.formatDate4Def(new Date())}""")
+        val orderProductID :String = input.productID
+        val pubID :String = input.pubID
+        val defValue :String = ""
+
+        /**
+          * 产品维表相关数据
+          * 使用列：product_id, product_level, product_type, departure_code, des_city_code, toursim_tickets_type
+          */
+        val productJson :String = redisCmd.hget(QRealTimeConstant.MYDQL_DIM_PRODUCT, orderProductID)
+        var productLevel = QRealTimeConstant.COMMON_NUMBER_ZERO_INT
+        var productType = defValue
+        var depCode = defValue
+        var desCode = defValue
+        var toursimType = defValue
+        if(StringUtils.isNotEmpty(productJson)){
+          val productRow : util.Map[String,Object] = JsonUtil.json2object(productJson, classOf[util.Map[String,Object]])
+          productLevel = productRow.get("product_level").toString.toInt
+
+          productType = productRow.get("product_type").toString
+          depCode = productRow.get("departure_code").toString
+          desCode = productRow.get("des_city_code").toString
+          toursimType = productRow.get("toursim_tickets_type").toString
         }
-        val productRow : util.Map[String,Object] = JsonUtil.json2object(productInfo, classOf[util.Map[String,Object]])
 
-        //product_id, product_level, product_type, departure_code, des_city_code, toursim_tickets_type
-        val productLevel = productRow.get("product_level").toString.toInt
-        val productType = productRow.get("product_type").toString
-        val depCode = productRow.get("departure_code").toString
-        val desCode = productRow.get("des_city_code").toString
-        val toursimType = productRow.get("toursim_tickets_type").toString
+        /**
+          * 酒店维表相关数据
+          */
+        val pubJson :String = redisCmd.hget(QRealTimeConstant.MYDQL_DIM_PUB, pubID)
+        var pubStar :String = defValue
+        var pubGrade :String = defValue
+        var isNational :String = defValue
+        if(StringUtils.isNotEmpty(pubJson)){
+          val pubRow : util.Map[String,Object] = JsonUtil.json2object(pubJson, classOf[util.Map[String,Object]])
+          pubStar = pubRow.get("pub_star").toString
+          pubGrade = pubRow.get("pub_grade").toString
+          isNational = pubRow.get("is_national").toString
+        }
 
-        val orderWide = OrderWideData(input.orderID, input.userID, orderProductID, input.pubID,
+        var orderWide = new OrderMWideData(input.orderID, input.userID, orderProductID, input.pubID,
           input.userMobile, input.userRegion, input.traffic, input.trafficGrade, input.trafficType,
           input.price, input.fee, input.hasActivity,
           input.adult, input.yonger, input.baby, input.ct,
-          productLevel, productType, toursimType, depCode, desCode)
-        println(s"""orderWide=${orderWide}""")
+          productLevel, productType, toursimType, depCode, desCode,
+          pubStar, pubGrade, isNational)
 
         val orderWides = List(orderWide)
-
         resultFuture.complete(orderWides)
       }catch {
         //注意：加入异常处理放置阻塞产生
         case ex: Exception => {
           println(s"""ex=${ex}""")
-          logger.error("DimProductAsyncFunction.err:" + ex.getMessage)
+          logger.error("DimProductMAsyncFunction.err:" + ex.getMessage)
           resultFuture.completeExceptionally(ex)
         }
       }
@@ -3048,8 +3014,8 @@ val syncFunc = new DimProductAsyncFunction(dbPath, productDBQuery, useLocalCache
       * @param input
       * @param resultFuture
       */
-    override def timeout(input: OrderDetailData, resultFuture: ResultFuture[OrderWideData]): Unit = {
-      println(s"""DimProductAsyncFunction timeout.time=${CommonUtil.formatDate4Def(new Date())}""")
+    override def timeout(input: OrderDetailData, resultFuture: ResultFuture[OrderMWideData]): Unit = {
+      println(s"""DimProductMAsyncFunction timeout.time=${CommonUtil.formatDate4Def(new Date())}""")
       super.timeout(input, resultFuture)
     }
 
@@ -3057,7 +3023,7 @@ val syncFunc = new DimProductAsyncFunction(dbPath, productDBQuery, useLocalCache
       * 关闭
       */
     override def close(): Unit = {
-      println(s"""DimProductAsyncFunction close.time=${CommonUtil.formatDate4Def(new Date())}""")
+      println(s"""DimProductMAsyncFunction close.time=${CommonUtil.formatDate4Def(new Date())}""")
       super.close()
       pool.close()
     }
@@ -3085,7 +3051,7 @@ val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(orderDeta
 #### 多维表宽表构造
 
 ```
-对于需要使用多维表来构造宽表的情况，可以参考OrdersWideAsyncHander其中单独有一个方法，原理和异步IO里提到的类似，核心想法是构造map结构的多维表数据信息后定时查询同步。
+对于需要使用多维表来构造宽表的情况，可以参考OrdersWideAsyncHander中的方法，原理和异步IO里提到的类似，核心想法是构造map结构的多维表数据信息后定时查询同步。
 强调一点维表数据量不能很大(当然维表数据量级较大的话会放在hbase之中)
 ```
 
@@ -3127,28 +3093,65 @@ val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(orderDeta
 
 
 ```scala
-//1 flink环境初始化使用事件时间做处理参考
-val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-    env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
+/**
+    * 用户行为日志(页面浏览行为数据)实时明细数据ETL处理
+    * @param appName 程序名称
+    * @param fromTopic 数据源输入 kafka topic
+    * @param groupID 消费组id
+    * @param indexName 输出ES索引名称
+    */
+def handleLogsETL4ESJob(appName:String, groupID:String, fromTopic:String, indexName:String):Unit = {
+try{
+      /**
+        * 1 Flink环境初始化
+        *   流式处理的时间特征依赖(使用事件时间)
+        */
+      //注意：检查点时间间隔单位：毫秒
+      val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+      val tc = TimeCharacteristic.EventTime
+      val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, tc, watermarkInterval)
 
-//2 kafka流式数据源
-val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
 
-//创建消费者和消费策略
-val schema:KafkaDeserializationSchema[UserLogData] = new UserLogsKSchema(fromTopic)
-val kafkaConsumer : FlinkKafkaConsumer[UserLogData] = new FlinkKafkaConsumer[UserLogData](fromTopic, schema, consumerProperties)
-    kafkaConsumer.setStartFromLatest()
+      /**
+        * 2 kafka流式数据源
+        *   kafka消费配置参数
+        *   kafka消费策略
+        *   创建flink消费对象FlinkKafkaConsumer
+        *   用户行为日志(kafka数据)反序列化处理
+        */
+      val schema:KafkaDeserializationSchema[UserLogData] = new UserLogsKSchema(fromTopic)
+      val kafkaConsumer : FlinkKafkaConsumer[UserLogData] = FlinkHelper.createKafkaSerDeConsumer(env, fromTopic, groupID, schema, StartupMode.LATEST)
 
-//3 实时流数据集合操作
-val dStream :DataStream[UserLogData] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
 
-//页面浏览
-val viewDStream :DataStream[UserLogPageViewData] = dStream.filter(
-      (log : UserLogData) => {
-        log.action.equalsIgnoreCase(ActionEnum.PAGE_ENTER_H5.getCode) || log.action.equalsIgnoreCase(ActionEnum.PAGE_ENTER_NATIVE.getCode)
+      /**
+        * 3 设置事件时间提取器及水位计算
+        *   方式：自定义实现AssignerWithPeriodicWatermarks 如 UserLogsAssigner
+        */
+      val userLogsPeriodicAssigner = new UserLogsAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
+      val viewDStream :DataStream[UserLogPageViewData] = env.addSource(kafkaConsumer)
+        .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+        .assignTimestampsAndWatermarks(userLogsPeriodicAssigner)
+        .filter(
+          (log : UserLogData) => {
+            log.action.equalsIgnoreCase(ActionEnum.PAGE_ENTER_H5.getCode) || log.action.equalsIgnoreCase(ActionEnum.PAGE_ENTER_NATIVE.getCode)
+          }
+        ).map(new UserLogPageViewDataMapFun())
+      viewDStream.print("=====viewDStream========")
+
+
+      //4 写入下游环节ES(具体下游环节取决于平台的技术方案和相关需求,如flink+es技术组合)
+      val viewESSink = new UserLogsViewESSink(indexName)
+      viewDStream.addSink(viewESSink)
+
+      env.execute(appName)
+    }catch {
+      case ex: Exception => {
+        logger.error("UserLogsViewHandler.err:" + ex.getMessage)
       }
-    ).map(new UserLogPageViewDataMapFun())
+  }
+
+}
 ```
 
 
@@ -3173,8 +3176,10 @@ case class UserLogPageViewData(sid:String, userDevice:String, userDeviceType:Str
 class UserLogsViewESSink(indexName:String) extends RichSinkFunction[UserLogPageViewData]{
 
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger(this.getClass)
 
+  //ES客户端连接对象
   var transportClient: PreBuiltTransportClient = _
 
 
@@ -3250,8 +3255,46 @@ class UserLogsViewESSink(indexName:String) extends RichSinkFunction[UserLogPageV
       this.transportClient.close()
     }
   }
-  
- ｝ 
+
+
+  /**
+    * 参数校验
+    * @param value
+    * @return
+    */
+  def checkData(value: String): String ={
+    var msg = ""
+    if(null == value){
+      msg = "kafka.value is empty"
+    }
+
+    //转换为Map结构
+    val record :java.util.Map[String,String] = JsonUtil.json2object(value, classOf[java.util.Map[String,String]])
+
+
+    //行为类型
+    val action = record.get(QRealTimeConstant.KEY_ACTION)
+    if(null == action){
+      msg = "Travel.ESSink.action  is null"
+    }
+
+    //行为类型
+    val eventTyoe = record.get(QRealTimeConstant.KEY_EVENT_TYPE)
+    if(null == eventTyoe){
+      msg = "Travel.ESSink.eventtype  is null"
+    }
+
+    //时间
+    val ctNode = record.get(TravelConstant.CT)
+    if(null == ctNode){
+      msg = "Travel.ESSink.ct is null"
+    }
+
+    msg
+  }
+
+
+}
 ```
 
 
@@ -3339,54 +3382,6 @@ viewDStream.addSink(viewKafkaProducer)
 
 
 
-#### 常见指标
-
-注释：下面所说的更多是从技术出发在不同行业场景中所体现的共性的需求点，大家尽量举一反三应用在自己包装的行业项目中。
-
-```
-(1) 运营类指标：实时数据报表
-用户粘性统计： 
-	用户启动数据统计(以APP启动或WEB登录为准)
-	
-分时段累计日活DAU(可按具体业务划分：旅游产品、票务、酒店住宿等)
-	基于小时级别逐步统计DAU（可基于Redis|ES）
-	
-	
-(2) 主营业务之数据实时分析
-实时业务数据聚合统计(可按具体业务(旅游产品、票务、酒店住宿等)下的子业务进行划分)
-	基于小时级别进行开窗统计，实时结果输出Sink（可基于Redis|ES|Druid）
-	示例：
-		实时统计旅游产品的业务数据PV、UV、费用等等
-		实时统计旅游产品的浏览日志PV、UV等等
-	  
-(3) 实时业务数据多维聚合统计
-	基于小时级别进行开窗统计，基于kylin进行多维数据分析
-	示例：
-	多维度【用户性别、用户年龄段、用户地区、实时时段(小时级别，需要二次加工)】
-		实时统计旅游产品的业务数据PV、UV、费用等等
-		实时统计旅游产品的浏览日志PV、UV等等
-
-(4) 个性化推荐营销(实时场景：基于用户的实时偏好)
-	例如用户浏览旅游产品、酒店信息时可通过相似用户进行相关推荐或将实时热门产品进行实时推荐
-	
-(5) 实时场景下的活动效果
-	实时统计优惠活动下的产品浏览统计、下单统计
-
-(6) 实时场景下的排名及统计效果
-	实时场景下的某些维度下的分类统计和TopN
-	例如
-		旅游产品下的不同时段内旅游产品类型(周边游等)的PV、UV统计及排名
-		旅游产品下的不同时段内评价统计及排名
-		旅游产品下的不同时段内分享统计及排名
-		所选酒店的不同时段内旅游产品类型(周边游等)的PV、UV统计及排名
-		所选酒店的不同时段内评价统计及排名
-		所选酒店的不同时段内分享统计及排名
-```
-
-
-
-
-
 #### 基于窗口数据的统计
 
 ##### 订单事实数据统计
@@ -3394,7 +3389,9 @@ viewDStream.addSink(viewKafkaProducer)
 ###### 需求点
 
 ```
-解决以【userRegion:用户所属地区、traffic:出游交通方式】做维度，【orders:订单数量, maxFee:最高消费, totalFee:消费总数, members:旅游人次】做度量的订单固定间隔N分钟统计指标或近N分钟统计指标。
+解决以【userRegion:用户所属地区、traffic:出游交通方式】做维度，
+【orders:订单数量, maxFee:最高消费, totalFee:消费总数, members:旅游人次】做度量
+旅游订单固定间隔N分钟统计指标或近N分钟统计指标。
 ```
 
 ###### 技术分析
@@ -3403,8 +3400,8 @@ viewDStream.addSink(viewKafkaProducer)
 1 数据源
   基于订单事实明细数据来完成
   
-2 结果为时间导向的计算需求，考虑以时间窗口进行统计计算 
-  基于时间的滚动窗口(TumblingProcessingTimeWindows)统计，如每N分钟统计结果
+2 结果为时间导向的计算需求，考虑以事件时间窗口进行统计计算 
+  基于时间的滚动窗口(TumblingEventTimeWindows)统计，如每N分钟统计结果
 
 3 数据输出
   如果结果要实时展示，那么可以结合grafana做展示，那么输出数据要输出到es、druid之中，当然它们也支持客户端交互式查询需求并有较好的性能。
@@ -3418,10 +3415,22 @@ viewDStream.addSink(viewKafkaProducer)
 详细代码参考：com.qf.bigdata.realtime.flink.streaming.agg.orders.OrdersDetailAggHandler
 
 ```scala
-val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.keyBy(
-        (detail:OrderDetailData) => OrderDetailAggDimData(detail.userRegion, detail.traffic)
-      )    .window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
+/**
+ * 3 开窗聚合操作
+ * (1) 分组维度列：用户所在地区(userRegion),出游交通方式(traffic)
+ * (2) 聚合结果数据(分组维度+度量值)：OrderDetailTimeAggDimMeaData
+ * (3) 开窗方式：滚动窗口TumblingEventTimeWindows
+ * (4) 允许数据延迟：allowedLateness
+ * (5) 聚合计算方式：aggregate
+ */
+ val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream
+     .keyBy(
+        (detail:OrderDetailData) => 
+         OrderDetailAggDimData(detail.userRegion, detail.traffic)
+      )               .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
+        .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
         .aggregate(new OrderDetailTimeAggFun(), new OrderDetailTimeWindowFun())
+aggDStream.print("order.aggDStream  ---:")
 ```
 
 
@@ -3458,7 +3467,6 @@ val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.key
       * 获取结果数据
       */
     override def getResult(accumulator: OrderDetailTimeAggMeaData): OrderDetailTimeAggMeaData = {
-      println(s"""OrderDetailTimeAggFun.getResult[${CommonUtil.formatDate4Def(new Date())}] ===> """)
       accumulator
     }
 
@@ -3528,12 +3536,7 @@ val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.key
 1 数据源
   考虑到聚合维度的扩展性，可以基于订单宽表明细数据来完成而不是订单事实数据
   
-2 结果为时间导向的计算需求，考虑以时间窗口进行统计计算 
-(1) 基于事件时间的滚动窗口(TumblingEventTimeWindows)统计，如每N分钟统计结果（实际事件发生时间）
-(2) 基于事件时间的滑动窗口(SlidingEventTimeWindows)统计，如近N分钟统计结果（实际事件发生时间）
-(3) 基于处理时间的滚动窗口(TumblingProcessingTimeWindows)统计，如每N分钟统计结果（任务处理节点机器时间）
-(4) 基于处理时间的滑动窗口(SlidingProcessingTimeWindows)统计，如每N分钟统计结果（任务处理节点机器时间）
-窗口聚合可以使用reduce、aggregate、process、max|sum|min等函数，但reduce和aggregate有预聚合功能所以比process更高效，比max等更强大灵活，所以aggregate和reduce相对使用较多。
+2 结果为时间导向的计算需求，考虑以处理时间窗口（TumblingProcessingTimeWindows）进行统计计算 
 
 3 数据输出
   如果结果要实时展示，那么可以结合grafana做展示，那么输出数据要输出到es、druid之中，当然它们也支持客户端交互式查询需求并有较好的性能。
@@ -3547,10 +3550,18 @@ val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream.key
 详细代码参考：com.qf.bigdata.realtime.flink.streaming.agg.orders.OrdersWideTimeAggHandler
 
 ```scala
-val aggDStream:DataStream[OrderWideTimeAggDimMeaData] = orderWideGroupDStream.keyBy({
-        (wide:OrderWideData) => OrderWideAggDimData(wide.productType, wide.toursimType)
-      })  .window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
-.aggregate(new OrderWideTimeAggFun(), new OrderWideTimeWindowFun())
+/**
+ * 7 基于订单宽表数据的聚合统计
+ *  (1) 分组维度：产品类型(productType)+出境类型(toursimType)
+ *  (2) 开窗方式：基于时间的滚动窗口
+ *  (3) 数据处理函数：aggregate
+ */
+val aggDStream:DataStream[OrderWideTimeAggDimMeaData] = orderWideGroupDStream
+        .keyBy({
+          (wide:OrderWideData) => OrderWideAggDimData(wide.productType, wide.toursimType)
+        })      .window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
+        .aggregate(new OrderWideTimeAggFun(), new OrderWideTimeWindowFun())
+ aggDStream.print("order.aggDStream---:")
 ```
 
 
@@ -3559,9 +3570,9 @@ val aggDStream:DataStream[OrderWideTimeAggDimMeaData] = orderWideGroupDStream.ke
 
 ```scala
 /**
-    * 订单宽表时间窗口预聚合函数
-    */
-  class OrderWideTimeAggFun extends AggregateFunction[OrderWideData, OrderWideTimeAggMeaData, OrderWideTimeAggMeaData] {
+ * 订单宽表时间窗口预聚合函数
+ */
+class OrderWideTimeAggFun extends AggregateFunction[OrderWideData, OrderWideTimeAggMeaData, OrderWideTimeAggMeaData] {
     /**
       * 创建累加器
       */
@@ -3608,9 +3619,9 @@ val aggDStream:DataStream[OrderWideTimeAggDimMeaData] = orderWideGroupDStream.ke
 
 ```scala
 /**
-    * 订单宽表时间窗口输出函数
-    */
-  class OrderWideTimeWindowFun extends WindowFunction[OrderWideTimeAggMeaData, OrderWideTimeAggDimMeaData, OrderWideAggDimData, TimeWindow]{
+ * 订单宽表时间窗口输出函数
+ */
+class OrderWideTimeWindowFun extends WindowFunction[OrderWideTimeAggMeaData, OrderWideTimeAggDimMeaData, OrderWideAggDimData, TimeWindow]{
     override def apply(key: OrderWideAggDimData, window: TimeWindow, input: Iterable[OrderWideTimeAggMeaData], out: Collector[OrderWideTimeAggDimMeaData]): Unit = {
       //分组维度
       val productType = key.productType
@@ -3693,18 +3704,21 @@ aggDStream.addSink(travelKafkaProducer)
 
 ```scala
 /**
-      * 6 topN排序
-      * Sorted的数据结构TreeSet或者是优先级队列PriorityQueue , TreeSet 实现原理是红黑树，优先队列实现原理就是最大/最小堆，
-      * 这两个都可以满足需求，但要如何选择？红黑树的时间复杂度是logN，而堆的构造复杂度是N, 读取复杂度是1，
-      * 但是我们这里需要不断的做数据插入那么就涉及不断的构造过程，相对而言选择红黑树比较好(其实flink sql内部做topN也是选择红黑树类型的TreeMap)
-      */
-val topNDStream:DataStream[OrderTrafficDimMeaData] = aggDStream.keyBy(
-    (detail:OrderTrafficDimMeaData) => {
-        OrderTrafficDimData(detail.productID, detail.traffic)
-    }
-)
-.window(TumblingProcessingTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
+ * 4 topN排序
+ * Sorted的数据结构TreeSet或者是优先级队列PriorityQueue
+ * (1) TreeSet实现原理是红黑树,时间复杂度是logN
+ * (2) 优先队列实现原理就是最大/最小堆,堆的构造复杂度是N, 读取复杂度是1
+ * 目前场景对应的是写操作频繁那么选择红黑树结构相对较好
+ */
+ val topNDStream:DataStream[OrderTrafficDimMeaData] = aggDStream.keyBy(
+        (detail:OrderTrafficDimMeaData) => {
+          OrderTrafficDimData(detail.productID, detail.traffic)
+        }
+      )    .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE * 3)))
+.allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
 .process(new OrderTopNKeyedProcessFun(topN))
+
+topNDStream.print("order.topNDStream---:")
 
 ```
 
@@ -3714,11 +3728,9 @@ val topNDStream:DataStream[OrderTrafficDimMeaData] = aggDStream.keyBy(
 
 ```scala
 /**
-    * 基于实时流数据的订单综合统计
-    */
+ * 订单统计排名的窗口处理函数
+ */
 class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTrafficDimMeaData, OrderTrafficDimMeaData, OrderTrafficDimData, TimeWindow] {
-
-
   /**
     * 处理数据
     */
@@ -3727,7 +3739,7 @@ class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTra
       val productID = key.productID
       val traffic = key.traffic
 
-      //排序比较
+      //排序比较(基于TreeSet)
       val topNContainer = new java.util.TreeSet[OrderTrafficDimMeaData](new OrderTopnComparator())
 
       for(element :OrderTrafficDimMeaData <- elements){
@@ -3798,21 +3810,28 @@ class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTra
 
 
 
-数量触发：OrdersStatisHandler的handleOrdersStatis4CountJob
+- 数量触发：OrdersStatisHandler的handleOrdersStatis4CountJob
+
 
 ```scala
  /**
-        * 5 综合统计
-        */
-val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
+   * 3 基于订单数据量触发的订单统计
+   *  (1) 分组维度：小时粒度的时间维度(hourTime)+出游交通方式(traffic)
+   *      下面注释的地方为另一种小时时间提取方法
+   *  (2) 开窗方式：基于处理时间的滚动窗口
+   *  (3) 窗口触发器：自定义基于订单数据量的窗口触发器OrdersStatisCountTrigger
+   *  (4) 数据处理函数：OrderStatisWindowProcessFun
+  */
+ val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
         (detail:OrderDetailData) => {
+          //val hourTime2 = TimeWindow.getWindowStartWithOffset(detail.ct, 0, Time.minutes(30).toMilliseconds)
+          //println(s"""hourTime2=${hourTime2}, hourTime2Str=${CommonUtil.formatDate4Timestamp(hourTime2, QRealTimeConstant.FORMATTER_YYYYMMDDHHMMSS)}""")
           val hourTime = CommonUtil.formatDate4Timestamp(detail.ct, QRealTimeConstant.FORMATTER_YYYYMMDDHH)
           OrderDetailSessionDimData(detail.traffic, hourTime)
         }
-      )
-        .window(TumblingProcessingTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
-        .trigger(new OrdersStatisCountTrigger(maxCount))
-        .process(new OrderStatisWindowProcessFun())
+      )    .window(TumblingEventTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
+.trigger(new OrdersStatisCountTrigger(maxCount))
+.process(new OrderStatisWindowProcessFun())
 ```
 
 
@@ -3917,25 +3936,30 @@ class OrdersStatisCountTrigger(maxCount:Long) extends Trigger[OrderDetailData, T
     }
   }
 }
+
 ```
 
 
 
-时间触发：OrdersStatisHandler的handleOrdersStatis4ProcceTimeJob
+- 时间触发：OrdersStatisHandler的handleOrdersStatis4ProcceTimeJob
+
 
 ```scala
  /**
-  * 5 综合统计
+  * 3 基于处理触发的订单统计
+  *  (1) 分组维度：小时粒度的时间维度(hourTime)+出游交通方式(traffic)
+  *  (2) 开窗方式：基于处理时间的滚动窗口
+  *  (3) 窗口触发器：自定义基于订单数据量的窗口触发器OrdersStatisTimeTrigger
+  *  (4) 数据处理函数：OrderStatisWindowProcessFun
   */
-val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
+ val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
         (detail:OrderDetailData) => {
           val hourTime = CommonUtil.formatDate4Timestamp(detail.ct, QRealTimeConstant.FORMATTER_YYYYMMDDHH)
           OrderDetailSessionDimData(detail.traffic, hourTime)
         }
-      )
-        .window(TumblingProcessingTimeWindows.of(Time.days(QRealTimeConstant.COMMON_NUMBER_ONE),  Time.hours(-8))) //每天5分钟触发
-        .trigger(new OrdersStatisTimeTrigger(maxInternal))
-        .process(new OrderStatisWindowProcessFun())
+      )    .window(TumblingProcessingTimeWindows.of(Time.days(QRealTimeConstant.COMMON_NUMBER_ONE),  Time.hours(-8))) //每天5分钟触发
+.trigger(new OrdersStatisTimeTrigger(maxInternal, TimeUnit.MINUTES))
+.process(new OrderStatisWindowProcessFun())
 ```
 
 
@@ -3943,15 +3967,16 @@ val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
 自定义触发器
 
 ```scala
-/**
+**
   * 旅游产品订单业务自定义时间触发器
   * 基于处理时间间隔时长触发任务处理
   */
-class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData, TimeWindow]{
+class OrdersStatisTimeTrigger(maxInterval :Long, timeUnit:TimeUnit) extends Trigger[OrderDetailData, TimeWindow]{
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger("OrdersStatisTimeTrigger")
 
-  //统计数据状态：计数
+  //订单统计业务的处理时间状态
   val TRIGGER_ORDER_STATE_TIME_DESC = "TRIGGER_ORDER_STATE_TIME_DESC"
   var ordersTimeStateDesc :ValueStateDescriptor[Long] = new ValueStateDescriptor[Long](TRIGGER_ORDER_STATE_TIME_DESC, createTypeInformation[Long])
   var ordersTimeState :ValueState[Long] = _
@@ -3959,10 +3984,10 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
 
   /**
     * 元素处理
-    * @param element
-    * @param timestamp
-    * @param window
-    * @param ctx
+    * @param element 数据类型
+    * @param timestamp 元素时间
+    * @param window 窗口
+    * @param ctx 上下文环境
     * @return
     */
   override def onElement(element: OrderDetailData, timestamp: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
@@ -3970,7 +3995,7 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
     ordersTimeState = ctx.getPartitionedState(ordersTimeStateDesc)
 
     //处理时间间隔
-    val maxIntervalTimestamp :Long = Time.of(maxInterval,TimeUnit.MINUTES).toMilliseconds
+    val maxIntervalTimestamp :Long = Time.of(maxInterval,timeUnit).toMilliseconds
     val curProcessTime :Long = ctx.getCurrentProcessingTime
 
     //当前处理时间到达或超过上次处理时间+间隔后触发本次窗口操作
@@ -3989,7 +4014,6 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
     * @return
     */
   override def onProcessingTime(time: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
-    println(s"""OrdersStatisTimeTrigger.onProcessingTime=${CommonUtil.formatDate4Def(new Date())}""")
     return TriggerResult.FIRE;
   }
 
@@ -4013,12 +4037,13 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
     * @param ctx
     */
   override def onMerge(window: TimeWindow, ctx: Trigger.OnMergeContext): Unit = {
-    println(s"""OrdersStatisTimeTrigger.onMerge=${CommonUtil.formatDate4Def(new Date())}""")
     val windowMaxTimestamp = window.maxTimestamp()
     if(windowMaxTimestamp > ctx.getCurrentWatermark){
       ctx.registerProcessingTimeTimer(windowMaxTimestamp)
     }
   }
+
+
 }
 ```
 
@@ -4032,6 +4057,7 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
 
 ```
 解决以【traffic:出游交通方式、时间维度 小时级 hourTime】做维度，【orders:订单数量, maxFee:最高消费, totalFee:消费总数, members:旅游人次】做度量的订单固定间隔N分钟统计指标或近N分钟统计指标。
+关键点：UV（去重）
 ```
 
 ###### 技术分析
@@ -4055,44 +4081,37 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
 
 详细代码参考：com.qf.bigdata.realtime.flink.streaming.agg.orders.OrdersStatisHandler
 
-```scala
-val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream.keyBy(
-(detail:OrderDetailData) => {
-  val hourTime = CommonUtil.formatDate4Timestamp(detail.ct, QRealTimeConstant.FORMATTER_YYYYMMDDHH)
-   OrderDetailSessionDimData(detail.traffic, hourTime)})
-.window(TumblingProcessingTimeWindows.of(Time.minutes(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
-.trigger(new OrdersStatisCountTrigger(maxCount))
-.process(new OrderStatisWindowProcessFun())
-```
-
 
 
 数据状态维护
 
 ```scala
-class OrderStatisWindowProcessFun extends ProcessWindowFunction[OrderDetailData, OrderDetailStatisData, OrderDetailSessionDimData, TimeWindow]{
+/**
+    * 订单统计数据的窗口处理函数
+    */
+  class OrderStatisWindowProcessFun extends ProcessWindowFunction[OrderDetailData, OrderDetailStatisData, OrderDetailSessionDimData, TimeWindow]{
 
-    //状态描述名称
+    //参与订单用户数量的状态描述名称
     val ORDER_STATE_USER_DESC = "ORDER_STATE_USER_DESC"
     var usersState :ValueState[mutable.Set[String]] = _
     var usersStateDesc :ValueStateDescriptor[mutable.Set[String]] = _
 
+    //订单数量的状态描述名称
     val ORDER_STATE_ORDERS_DESC = "ORDER_STATE_ORDERS_DESC"
     var ordersAccState :ValueState[OrderAccData] = _
     var ordersAccStateDesc :ValueStateDescriptor[OrderAccData] = _
 
 
-
     /**
-      * 连接资源初始化(如果需要)
+      * 相关连接资源初始化(如果需要)
       * @param parameters
       */
     override def open(parameters: Configuration): Unit = {
-      //状态数据：订单UV
+      //订单用户列表的状态数据
       usersStateDesc = new ValueStateDescriptor[mutable.Set[String]](ORDER_STATE_USER_DESC, createTypeInformation[mutable.Set[String]])
       usersState = this.getRuntimeContext.getState(usersStateDesc)
 
-      //状态数据：订单度量(订单总数量、订单总费用)
+      //订单状态数据：订单度量(订单总数量、订单总费用)
       ordersAccStateDesc = new ValueStateDescriptor[OrderAccData](ORDER_STATE_ORDERS_DESC, createTypeInformation[OrderAccData])
       ordersAccState = this.getRuntimeContext.getState(ordersAccStateDesc)
     }
@@ -4161,6 +4180,8 @@ class OrderStatisWindowProcessFun extends ProcessWindowFunction[OrderDetailData,
       usersState.clear()
       ordersAccState.clear()
     }
+
+
   }
 ```
 
@@ -4197,12 +4218,17 @@ class OrderStatisWindowProcessFun extends ProcessWindowFunction[OrderDetailData,
 
 ```scala
 /**
-* 7综合统计
-*/
+ * 5 基于宽表明细数据进行聚合统计
+ *   (1) 分组维度：产品类型(productType)，产品种类(出境|非出境)(toursimType)
+ *   (2) 数据处理函数：OrderCustomerStatisKeyedProcessFun
+ *      (基于数据量和间隔时间触发进行数据划分统计)
+ */
 val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.keyBy(
-	(wide:OrderWideData) => {OrderWideAggDimData(wide.productType, wide.toursimType)}
+    (wide:OrderWideData) => {
+        OrderWideAggDimData(wide.productType, wide.toursimType)
+    }
 )
-.process(new OrderCustomerStatisKeyedProcessFun(maxCount, maxInterval))
+.process(new OrderCustomerStatisKeyedProcessFun(maxCount, maxInterval, TimeUnit.MINUTES))
 
 ```
 
@@ -4212,19 +4238,21 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
 
 ```scala
 /**
-    * 基于实时流数据的订单综合统计
+    * 订单业务：自定义分组处理函数
     */
-  class OrderCustomerStatisKeyedProcessFun(maxCount :Long, maxInterval :Long) extends KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData] {
+  class OrderCustomerStatisKeyedProcessFun(maxCount :Long, maxInterval :Long, timeUnit:TimeUnit) extends KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData] {
 
-    //状态描述名称
+    //参与订单的用户数量状态描述名称
     val CUSTOMER_ORDER_STATE_USER_DESC = "CUSTOMER_ORDER_STATE_USER_DESC"
     var customerUserState :ValueState[mutable.Set[String]] = _
     var customerUserStateDesc :ValueStateDescriptor[mutable.Set[String]] = _
 
+    //订单数量状态描述名称
     val CUSTOMER_ORDER_STATE_ORDERS_DESC = "CUSTOMER_ORDER_STATE_ORDERS_DESC"
     var customerOrdersAccState :ValueState[OrderAccData] = _
     var customerOrdersAccStateDesc :ValueStateDescriptor[OrderAccData] = _
 
+    //统计时间范围的状态描述名称
     val CUSTOMER_ORDER_STATE_PROCESS_DESC = "CUSTOMER_ORDER_STATE_PROCESS_DESC"
     var customerProcessState :ValueState[QProcessWindow] = _
     var customerProcessStateDesc :ValueStateDescriptor[QProcessWindow] = _
@@ -4247,14 +4275,13 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
       //处理时间
       customerProcessStateDesc = new ValueStateDescriptor[QProcessWindow](CUSTOMER_ORDER_STATE_PROCESS_DESC, createTypeInformation[QProcessWindow])
       customerProcessState = this.getRuntimeContext.getState(customerProcessStateDesc)
-
     }
 
     /**
       * 处理数据
-      * @param value
-      * @param ctx
-      * @param out
+      * @param value 元素数据
+      * @param ctx 上下文环境对象
+      * @param out 输出结果
       */
     override def processElement(value: OrderWideData, ctx: KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData]#Context, out: Collector[OrderWideCustomerStatisData]): Unit = {
       //原始数据
@@ -4275,6 +4302,7 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
       }
       val qProcessWindow :QProcessWindow = customerProcessState.value()
       if(curProcessTime >= qProcessWindow.end){
+        qProcessWindow.start = qProcessWindow.end
         qProcessWindow.end = curProcessTime
       }
       customerProcessState.update(qProcessWindow)
@@ -4302,7 +4330,6 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
       customerUserState.update(userKeys)
 
       //数量触发条件：maxCount
-
       if(totalOrders >= maxCount){
         val orderDetailStatisData = OrderWideCustomerStatisData(productType, toursimType, startWindowTime, endWindowTime,totalOrders, users, totalFee)
 
@@ -4311,6 +4338,51 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
         customerUserState.clear()
       }
     }
+
+
+    /**
+      * 定时器触发
+      * @param timestamp
+      * @param ctx
+      * @param out
+      */
+    override def onTimer(timestamp: Long, ctx: KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData]#OnTimerContext, out: Collector[OrderWideCustomerStatisData]): Unit = {
+      val key :OrderWideAggDimData = ctx.getCurrentKey
+      val productType = key.productType
+      val toursimType = key.toursimType
+
+      //时间触发条件：当前处理时间到达或超过上次处理时间+间隔后触发本次窗口操作
+      if(customerProcessState.value() == null){
+        customerProcessState.update(new QProcessWindow(timestamp, timestamp))
+      }
+      val maxIntervalTimestamp :Long = Time.of(maxInterval,timeUnit).toMilliseconds
+      var nextProcessingTime = TimeWindow.getWindowStartWithOffset(timestamp, 0, maxIntervalTimestamp) + maxIntervalTimestamp
+      ctx.timerService().registerProcessingTimeTimer(nextProcessingTime)
+      val startWindowTime = customerProcessState.value().start
+
+      //度量数据
+      var ordersAcc :OrderAccData =  customerOrdersAccState.value
+      if(null == ordersAcc){
+        ordersAcc = new OrderAccData(QRealTimeConstant.COMMON_NUMBER_ZERO, QRealTimeConstant.COMMON_NUMBER_ZERO)
+      }
+      var totalOrders :Long = ordersAcc.orders + 1
+      var totalFee :Long = ordersAcc.totalFee + QRealTimeConstant.COMMON_NUMBER_ZERO
+
+      //UV判断
+      var userKeys :mutable.Set[String] = customerUserState.value
+      if(null == userKeys){
+        userKeys = mutable.Set[String]()
+      }
+      val users = userKeys.size
+
+      //触发
+      val orderDetailStatisData = OrderWideCustomerStatisData(productType, toursimType, startWindowTime, timestamp,totalOrders, users, totalFee)
+      out.collect(orderDetailStatisData)
+
+      customerOrdersAccState.clear()
+      customerUserState.clear()
+    }
+  }
 ```
 
 
@@ -4357,18 +4429,19 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
 
 ```scala
 /**
-* 4 设置复杂规则 cep
-* 	连续N次停留时长超越合理区间
-*/
+ * 4 设置复杂规则 cep
+ *   规则：5分钟内连续连续 停留时长 小于X 大于Y 的情况出现3次以上
+ */
 val pattern :Pattern[UserLogPageViewData, UserLogPageViewData] =
 Pattern.begin[UserLogPageViewData](QRealTimeConstant.FLINK_CEP_VIEW_BEGIN)
-.where(
-	(value: UserLogPageViewData, ctx) => {
-		val durationTime = value.duration.toLong
-		durationTime < minDuration || durationTime > maxDuration
-}
-).timesOrMore(times)
-.consecutive() //连续的
+.where(//对应规则逻辑
+    (value: UserLogPageViewData, ctx) => {
+        val durationTime = value.duration.toLong
+        durationTime < minDuration || durationTime > maxDuration
+    }
+)
+.timesOrMore(times)//匹配规则次数
+.consecutive() //连续匹配模式
 
 
 /**
@@ -4391,12 +4464,12 @@ val viewDurationAlertDStream :DataStream[UserLogPageViewAlertData] = viewPattern
 
 
 
-#### 用户启动日志实时采集
+#### 旅游产品订单数据实时采集
 
 ##### 需求点
 
 ```
-用户启动日志的实时采集落地(HDFS)
+旅游产品订单数据实时采集落地(HDFS)
 ```
 
 
@@ -4418,21 +4491,24 @@ val viewDurationAlertDStream :DataStream[UserLogPageViewAlertData] = viewPattern
 
 实时数据采集落地过程(局部代码)
 
-详细代码参考：com.qf.bigdata.realtime.flink.streaming.etl.ods.UserLogsLaunchBatchRec
+详细代码参考：com.qf.bigdata.realtime.flink.streaming.recdata.OrdersRecHandler
 
 ```scala
 //数据实时采集落地
+//旅游产品订单数据
+val orderDetailDStream :DataStream[String] = ...
 
+//4 数据实时采集落地
 //数据落地路径
 val outputPath :Path = new Path(output)
 //落地大小阈值
-val maxPartSize = 1024l * 1024l * maxSize
+val maxPartSize = 1024l *  maxSize
 //落地时间间隔
-val rolloverInl = TimeUnit.MINUTES.toMillis(rolloverInterval)
+val rolloverInl = TimeUnit.SECONDS.toMillis(rolloverInterval)
 //无数据间隔时间
-val inactivityInl = TimeUnit.MINUTES.toMillis(inactivityInterval)
+val inactivityInl = TimeUnit.SECONDS.toMillis(inactivityInterval)
 //分桶检查点时间间隔
-val bucketCheckInl = TimeUnit.MINUTES.toMillis(bucketCheckInterval)
+val bucketCheckInl = TimeUnit.SECONDS.toMillis(bucketCheckInterval)
 
 //落地策略
 val rollingPolicy :DefaultRollingPolicy[String,String] = DefaultRollingPolicy.create()
@@ -4451,8 +4527,6 @@ val hdfsSink: StreamingFileSink[String] = StreamingFileSink
 .withRollingPolicy(rollingPolicy)
 .withBucketCheckInterval(bucketCheckInl)
 .build()
-
-launchRowDStream.addSink(hdfsSink)
 
 ```
 

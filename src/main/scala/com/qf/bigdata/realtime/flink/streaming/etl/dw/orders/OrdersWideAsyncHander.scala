@@ -32,9 +32,13 @@ object OrdersWideAsyncHander {
     * 构造旅游产品数据查询对象
     */
   def createProductDBQuery():DBQuery = {
+    //查询sql
     val sql = QRealTimeConstant.SQL_PRODUCT
+    //查询数据集对应schema
     val schema = QRealTimeConstant.SCHEMA_PRODUCT
-    val pk = "product_id";
+    //主键
+    val pk = QRealTimeConstant.MYSQL_FIELD_PRODUCT_ID;
+    //查询目标表
     val tableProduct = QRealTimeConstant.MYDQL_DIM_PRODUCT
 
     new DBQuery(tableProduct, schema, pk, sql)
@@ -44,9 +48,13 @@ object OrdersWideAsyncHander {
     * 构造酒店数据查询对象
     */
   def createPubDBQuery():DBQuery = {
+    //查询sql
     val sql = QRealTimeConstant.SQL_PUB
+    //查询数据集对应schema
     val schema = QRealTimeConstant.SCHEMA_PUB
-    val pk = "pub_id";
+    //主键
+    val pk = QRealTimeConstant.MYSQL_FIELD_PUB_ID;
+    //查询目标表
     val tablePub = QRealTimeConstant.MYDQL_DIM_PUB
 
     new DBQuery(tablePub, schema, pk, sql)
@@ -55,56 +63,54 @@ object OrdersWideAsyncHander {
 
 
   /**
-    * 实时开窗聚合数据
-    * 多维表处理
+    * 旅游产品订单数据实时开窗聚合
+    * 多维表处理:旅游产品维表+酒店维表
     */
-  def handleOrdersMWideAsyncJob(appName:String, fromTopic:String, toTopic:String, groupID:String):Unit = {
+  def handleOrdersMWideAsyncJob(appName:String, groupID:String, fromTopic:String):Unit = {
     try{
       /**
         * 1 Flink环境初始化
         *   流式处理的时间特征依赖(使用事件时间)
         */
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-      env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
+      //注意：检查点时间间隔单位：毫秒
+      val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+      val tc = TimeCharacteristic.EventTime
+      val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, tc, watermarkInterval)
+
 
       /**
         * 2 kafka流式数据源
         *   kafka消费配置参数
         *   kafka消费策略
         */
-      val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
-      consumerProperties.setProperty("group.id", groupID)
-
-      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
-      kafkaConsumer.setStartFromLatest()
-
-      /**
-        * 3 订单数据
-        *   原始明细数据转换操作
-        */
-      val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-      val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
+      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, groupID)
 
 
       /**
-        * 4 设置事件时间提取器及水位计算
-        *   固定范围的水位指定(注意时间单位)
+        * 3 旅游产品订单数据
+        *   (1) kafka数据源(原始明细数据)->转换操作
+        *   (2) 设置执行任务并行度
+        *   (3) 设置水位及事件时间(如果时间语义为事件时间)
         */
+      //固定范围的水位指定(注意时间单位)
       val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-      orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
-      //orderDetailDStream.print("order.orderDStream---")
+      val orderDetailDStream :DataStream[OrderDetailData] = env.addSource(kafkaConsumer)
+                                           .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+                                           .map(new OrderDetailDataMapFun())
+                                           .assignTimestampsAndWatermarks(ordersPeriodicAssigner)
+
 
       /**
-        * 5 异步维表数据提取
-        *   旅游产品维度数据
+        * 4 异步维表数据提取
+        *   多维表：旅游产品维表+酒店维表
         */
-      //多维表处理
       val dbPath = QRealTimeConstant.MYSQL_CONFIG_URL
       val productDBQuery :DBQuery = createProductDBQuery()
       val pubDBQuery :DBQuery = createPubDBQuery()
       val dbQuerys: mutable.Map[String,DBQuery] = mutable.Map[String,DBQuery](QRealTimeConstant.MYDQL_DIM_PRODUCT -> productDBQuery, QRealTimeConstant.MYDQL_DIM_PUB -> pubDBQuery)
 
+      //异步IO操作
       val syncMFunc = new DimProductMAsyncFunction(dbPath, dbQuerys)
       val asyncMulDS :DataStream[OrderMWideData] = AsyncDataStream.unorderedWait(orderDetailDStream, syncMFunc, QRealTimeConstant.DYNC_DBCONN_TIMEOUT, TimeUnit.MINUTES, QRealTimeConstant.DYNC_DBCONN_CAPACITY)
       asyncMulDS.print("asyncMulDS===>")
@@ -123,49 +129,45 @@ object OrdersWideAsyncHander {
   /**
     * 实时开窗聚合数据
     */
-  def handleOrdersWideAsyncJob(appName:String, fromTopic:String, toTopic:String, groupID:String):Unit = {
+  def handleOrdersWideAsyncJob(appName:String, groupID:String, fromTopic:String, toTopic:String):Unit = {
     try{
       /**
         * 1 Flink环境初始化
         *   流式处理的时间特征依赖(使用事件时间)
         */
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-      env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
+      //注意：检查点时间间隔单位：毫秒
+      val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+      val tc = TimeCharacteristic.EventTime
+      val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, tc, watermarkInterval)
+
 
       /**
         * 2 kafka流式数据源
         *   kafka消费配置参数
         *   kafka消费策略
         */
-      val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
-      consumerProperties.setProperty("group.id", groupID)
-
-      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
-      kafkaConsumer.setStartFromLatest()
+      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, groupID)
 
 
       /**
-        * 3 订单数据
-        *   原始明细数据转换操作
+        * 3 旅游产品订单数据
+        *   (1) kafka数据源(原始明细数据)->转换操作
+        *   (2) 设置执行任务并行度
+        *   (3) 设置水位及事件时间(如果时间语义为事件时间)
         */
-      val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-      val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
-
-
-      /**
-        * 4 设置事件时间提取器及水位计算
-        *   固定范围的水位指定(注意时间单位)
-        */
+      //固定范围的水位指定(注意时间单位)
       val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-      orderDetailDStream.assignTimestampsAndWatermarks(ordersPeriodicAssigner)
+      val orderDetailDStream :DataStream[OrderDetailData] = env.addSource(kafkaConsumer)
+        .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+        .map(new OrderDetailDataMapFun())
+        .assignTimestampsAndWatermarks(ordersPeriodicAssigner)
       //orderDetailDStream.print("order.orderDStream---")
 
       /**
-        * 5 异步维表数据提取
-        *   旅游产品维度数据
+        * 4 异步维表数据提取
+        *   单维表：旅游产品维表数据
         */
-      //单维表处理
       val useLocalCache :Boolean = false
       val dbPath = QRealTimeConstant.MYSQL_CONFIG_URL
       val productDBQuery :DBQuery = createProductDBQuery()
@@ -175,7 +177,10 @@ object OrdersWideAsyncHander {
 
 
       /**
-        * 6 订单宽表数据打回kafka为下游环节计算准备数据
+        * 5 数据流(如DataStream[OrderWideData])输出sink(如kafka、es等)
+        *   (1) kafka数据序列化处理 如OrderWideKSchema
+        *   (2) kafka生产者语义：AT_LEAST_ONCE 至少一次
+        *   (3) 设置kafka数据加入摄入时间 setWriteTimestampToKafka
         */
       val kafkaSerSchema = new OrderWideKSchema(toTopic)
       val kafkaProductConfig = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_PRODUCER_CONFIG_URL)
@@ -185,7 +190,6 @@ object OrdersWideAsyncHander {
         kafkaProductConfig,
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE)
 
-      // 加入kafka摄入时间
       travelKafkaProducer.setWriteTimestampToKafka(true)
       asyncDS.addSink(travelKafkaProducer)
 
@@ -206,19 +210,24 @@ object OrdersWideAsyncHander {
     //    val appName = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_APPNAME)
     //    val fromTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_FROM)
     //    val toTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_TO)
-
+    //应用程序名称
     val appName = "flink.OrdersWideAsyncHander"
-    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "test_ods"
-    //val toTopic = QRealTimeConstant.TOPIC_ORDER_DW_WIDE
-    val toTopic = "test_dw_wide_multi"
+
+    //kafka消费组
     val groupID = "group.OrdersWideAsyncHander"
 
+    //kafka数据源topic
+    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+
+    //kafka数据输出topic
+    val toTopic = QRealTimeConstant.TOPIC_ORDER_DW_WIDE
+
+
     //1 维表数据异步处理形成宽表
-    //handleOrdersWideAsyncJob(appName, fromTopic, toTopic, groupID)
+    //handleOrdersWideAsyncJob(appName, groupID, fromTopic, toTopic)
 
     //2 多维表数据异步处理形成宽表
-    handleOrdersMWideAsyncJob(appName, fromTopic, toTopic, groupID)
+    handleOrdersMWideAsyncJob(appName, groupID, fromTopic)
 
 
 

@@ -1,10 +1,7 @@
 package com.qf.bigdata.realtime.flink.streaming.trigger
 
-import java.util.Date
 import java.util.concurrent.TimeUnit
-
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.OrderDetailData
-import com.qf.bigdata.realtime.util.CommonUtil
 import org.apache.flink.api.common.state.{ValueState, ValueStateDescriptor}
 import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.windowing.time.Time
@@ -16,11 +13,12 @@ import org.slf4j.{Logger, LoggerFactory}
   * 旅游产品订单业务自定义时间触发器
   * 基于处理时间间隔时长触发任务处理
   */
-class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData, TimeWindow]{
+class OrdersStatisTimeTrigger(maxInterval :Long, timeUnit:TimeUnit) extends Trigger[OrderDetailData, TimeWindow]{
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger("OrdersStatisTimeTrigger")
 
-  //统计数据状态：计数
+  //订单统计业务的处理时间状态
   val TRIGGER_ORDER_STATE_TIME_DESC = "TRIGGER_ORDER_STATE_TIME_DESC"
   var ordersTimeStateDesc :ValueStateDescriptor[Long] = new ValueStateDescriptor[Long](TRIGGER_ORDER_STATE_TIME_DESC, createTypeInformation[Long])
   var ordersTimeState :ValueState[Long] = _
@@ -28,10 +26,10 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
 
   /**
     * 元素处理
-    * @param element
-    * @param timestamp
-    * @param window
-    * @param ctx
+    * @param element 数据类型
+    * @param timestamp 元素时间
+    * @param window 窗口
+    * @param ctx 上下文环境
     * @return
     */
   override def onElement(element: OrderDetailData, timestamp: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
@@ -39,7 +37,7 @@ class OrdersStatisTimeTrigger(maxInterval :Long) extends Trigger[OrderDetailData
     ordersTimeState = ctx.getPartitionedState(ordersTimeStateDesc)
 
     //处理时间间隔
-    val maxIntervalTimestamp :Long = Time.of(maxInterval,TimeUnit.MINUTES).toMilliseconds
+    val maxIntervalTimestamp :Long = Time.of(maxInterval,timeUnit).toMilliseconds
     val curProcessTime :Long = ctx.getCurrentProcessingTime
 
     //当前处理时间到达或超过上次处理时间+间隔后触发本次窗口操作

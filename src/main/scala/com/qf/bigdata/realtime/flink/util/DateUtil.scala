@@ -1,14 +1,11 @@
 package com.qf.bigdata.realtime.util.DateUtil
 
-import java.text.SimpleDateFormat
 import java.time.{LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
-import java.util.{Calendar, Date, GregorianCalendar}
+import java.util.Date
 
-import com.alibaba.fastjson.{JSON, JSONArray}
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.LoggerFactory
 
-import scala.io.Source
 
 /**
   * 时间工具

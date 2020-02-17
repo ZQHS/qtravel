@@ -19,13 +19,15 @@ import org.slf4j.{Logger, LoggerFactory}
   */
 class CommonESSink(indexName:String) extends RichSinkFunction[String] {
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger(this.getClass)
 
+  //ES客户端连接对象
   var transportClient: PreBuiltTransportClient = _
 
 
   /**
-    * 连接es集群
+    * 初始化：连接ES集群
     * @param parameters
     */
   override def open(parameters: Configuration): Unit = {
@@ -38,8 +40,8 @@ class CommonESSink(indexName:String) extends RichSinkFunction[String] {
 
   /**
     * Sink输出处理
-    * @param value
-    * @param context
+    * @param value 数据
+    * @param context 函数上下文环境对象
     */
   override def invoke(value: String, context: SinkFunction.Context[_]): Unit = {
     try {
@@ -50,40 +52,49 @@ class CommonESSink(indexName:String) extends RichSinkFunction[String] {
         return
       }
 
-      //记录信息
-      val record :java.util.Map[String,Object] = JsonUtil.json2object(value, classOf[java.util.Map[String,Object]])
-
-      //esID
-      val eid :String = record.get(QRealTimeConstant.KEY_ES_ID).toString
-
-      //索引名称、类型名称
-      handleData(indexName, indexName, eid, record)
+      //将数据写入ES集群
+      handleData(indexName, indexName, value)
 
     }catch{
       case ex: Exception => logger.error(ex.getMessage)
     }
   }
 
+
   /**
     * ES插入或更新数据
-    * @param idxName
-    * @param idxTypeName
-    * @param esID
-    * @param value
+    * @param idxName 索引名称
+    * @param idxTypeName 索引类型名
+    * @param esID 索引ID
+    * @param value 写入数据
     */
-  def handleData(idxName :String, idxTypeName :String, esID :String,
-                 value: java.util.Map[String,Object]): Unit ={
-    val indexRequest = new IndexRequest(idxName, idxName, esID).source(value)
-    val response = transportClient.prepareUpdate(idxName, idxName, esID)
+  def handleData(idxName :String, idxTypeName :String, data:String): Unit ={
+
+    //数据转换
+    val record :java.util.Map[String,Object] = JsonUtil.json2object(data, classOf[java.util.Map[String,Object]])
+
+    //esID(用做ES的索引ID)
+    val eid :String = record.get(QRealTimeConstant.KEY_ES_ID).toString
+
+    //es索引操作对象
+    val indexRequest = new IndexRequest(idxName, idxName, eid).source(record)
+    val response = transportClient.prepareUpdate(idxName, idxName, eid)
+      //允许写入数据(id重复)时发送冲突的次数
       .setRetryOnConflict(QRealTimeConstant.ES_RETRY_NUMBER)
-      .setDoc(value)
+      //写入索引数据
+      .setDoc(record)
+      //插入或更新操作
       .setUpsert(indexRequest)
+      //执行写入操作结果
       .get()
+    //写入异常处理
     if (response.status() != RestStatus.CREATED && response.status() != RestStatus.OK) {
-      System.err.println("calculate es session record error!map:" + new ObjectMapper().writeValueAsString(value))
+      logger.error("calculate es session record error!map:" + new ObjectMapper().writeValueAsString(record))
       throw new Exception("run exception:status:" + response.status().name())
     }
   }
+
+
 
 
   /**
@@ -97,7 +108,7 @@ class CommonESSink(indexName:String) extends RichSinkFunction[String] {
 
 
   /**
-    * 参数校验
+    * 参数校验(由于匹配通用数据只能检测共性数据)
     * @param value
     * @return
     */
@@ -106,6 +117,16 @@ class CommonESSink(indexName:String) extends RichSinkFunction[String] {
     if(null == value){
       msg = "kafka.value is empty"
     }
+
+    //转换为Map结构
+    val record :java.util.Map[String,String] = JsonUtil.json2object(value, classOf[java.util.Map[String,String]])
+
+    //索引id
+    val id = record.get(QRealTimeConstant.KEY_ES_ID)
+    if(null == id){
+      msg = "Travel.ESSink.id  is null"
+    }
+
     msg
   }
 

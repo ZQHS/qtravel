@@ -1,28 +1,18 @@
 package com.qf.bigdata.realtime.flink.streaming.agg.orders
 
-import java.util.Properties
-
 import com.qf.bigdata.realtime.constant.CommonConstant
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO._
-import com.qf.bigdata.realtime.flink.streaming.assigner.OrdersPeriodicAssigner
 import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersAggFun.{OrderDetailTimeAggFun, OrderDetailTimeWindowFun}
-import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun.OrderDetailDataMapFun
 import com.qf.bigdata.realtime.flink.streaming.sink.CommonESSink
-import com.qf.bigdata.realtime.flink.streaming.trigger.OrdersStatisTrigger
 import com.qf.bigdata.realtime.flink.util.help.FlinkHelper
-import com.qf.bigdata.realtime.util.PropertyUtil
 import com.qf.bigdata.realtime.util.json.JsonUtil
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.windowing.assigners.{TumblingEventTimeWindows, TumblingProcessingTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 import org.slf4j.{Logger, LoggerFactory}
 import org.apache.flink.api.scala._
-import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
-import org.apache.flink.streaming.api.windowing.windows.{TimeWindow, Window}
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
@@ -31,60 +21,42 @@ import scala.collection.mutable
   */
 object OrdersDetailAggHandler {
 
+  //日志记录
   val logger :Logger = LoggerFactory.getLogger("OrdersDetailAggHandler")
 
   /**
-    * 实时开窗聚合数据
+    * 旅游产品订单数据实时ETL
+    * @param appName 程序名称
+    * @param fromTopic 数据源输入 kafka topic
+    * @param groupID 消费组id
+    * @param indexName 数据流输出
     */
-  def handleOrdersAggWindowJob(appName:String, fromTopic:String, toTopic:String, groupID:String, indexName:String):Unit = {
-
+  def handleOrdersAggWindowJob(appName:String, groupID:String, fromTopic:String, indexName:String):Unit = {
     try{
       /**
         * 1 Flink环境初始化
         *   流式处理的时间特征依赖(使用事件时间)
         */
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL)
-      env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
-      env.getConfig.setAutoWatermarkInterval(QRealTimeConstant.FLINK_WATERMARK_INTERVAL)
+      //注意：检查点时间间隔单位：毫秒
+      val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
+      val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
+      val timeChar = TimeCharacteristic.EventTime
+      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, timeChar, watermarkInterval)
 
       /**
-        * 2 kafka流式数据源
-        *   kafka消费配置参数
-        *   kafka消费策略
+        * 2 读取kafka旅游产品订单数据并形成订单实时数据流
         */
-      val consumerProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
-      consumerProperties.setProperty("group.id", groupID)
-
-      //kafka消费+消费策略
-      val kafkaConsumer : FlinkKafkaConsumer[String] = FlinkHelper.createKafkaConsumer(env, fromTopic, consumerProperties)
-      kafkaConsumer.setStartFromLatest()
-      kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
+      val orderDetailDStream:DataStream[OrderDetailData] = FlinkHelper.createOrderDetailDStream(env, groupID, fromTopic,timeChar)
 
       /**
-        * 3 订单数据
-        *   原始明细数据转换操作
-        */
-      val dStream :DataStream[String] = env.addSource(kafkaConsumer).setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
-      val orderDetailDStream :DataStream[OrderDetailData] = dStream.map(new OrderDetailDataMapFun())
-      //orderDetailDStream.print("orderDStream---:")
-
-      /**
-        * 5 设置事件时间提取器及水位计算
-        *   固定范围的水位指定(注意时间单位)
-        */
-      val orderBoundedAssigner = new BoundedOutOfOrdernessTimestampExtractor[OrderDetailData](Time.seconds(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)) {
-        override def extractTimestamp(element: OrderDetailData): Long = {
-          val ct = element.ct
-          ct
-        }
-      }
-      val ordersPeriodicAssigner = new OrdersPeriodicAssigner(QRealTimeConstant.FLINK_WATERMARK_MAXOUTOFORDERNESS)
-
-      /**
-        * 4 开窗聚合操作
+        * 3 开窗聚合操作
+        * (1) 分组维度列：用户所在地区(userRegion),出游交通方式(traffic)
+        * (2) 聚合结果数据(分组维度+度量值)：OrderDetailTimeAggDimMeaData
+        * (3) 开窗方式：滚动窗口TumblingEventTimeWindows
+        * (4) 允许数据延迟：allowedLateness
+        * (5) 聚合计算方式：aggregate
         */
       val aggDStream:DataStream[OrderDetailTimeAggDimMeaData] = orderDetailDStream
-        .assignTimestampsAndWatermarks(orderBoundedAssigner)
         .keyBy(
         (detail:OrderDetailData) => OrderDetailAggDimData(detail.userRegion, detail.traffic)
       )
@@ -95,7 +67,8 @@ object OrdersDetailAggHandler {
 
 
       /**
-        * 5 聚合数据写入ES
+        * 4 聚合数据写入ES
+        *   (1) ES接收json或map结构数据，插入的id值为自定义索引主键id(为下游使用方搜索准备，如果采用es自生成id方式则不用采用此方式)
         */
       val esDStream:DataStream[String] = aggDStream.map(
         (value : OrderDetailTimeAggDimMeaData) => {
@@ -108,7 +81,7 @@ object OrdersDetailAggHandler {
 
 
       /**
-        * 6 数据输出Sink
+        * 5 订单统计结果数据输出Sink
         *   自定义ESSink输出
         */
       val orderAggESSink = new CommonESSink(indexName)
@@ -132,18 +105,22 @@ object OrdersDetailAggHandler {
     //    val fromTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_FROM)
     //    val toTopic = parameterTool.get(QRealTimeConstant.PARAMS_KEYS_TOPIC_TO)
 
+    //应用程序名称
     val appName = "qf.OrdersDetailAggHandler"
-    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
 
-
-    val toTopic = QRealTimeConstant.TOPIC_ORDER_DM
+    //kafka消费组
     val groupID = "group.OrdersDetailAggHandler"
+
+    //kafka数据消费topic
+    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    val fromTopic = "test_ods"
+
+    //订单统计数据输出ES
     val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_WIN_STATIS
 
 
-
     //实时处理第二层：开窗统计
-    handleOrdersAggWindowJob(appName, fromTopic, toTopic, groupID, indexName)
+    handleOrdersAggWindowJob(appName, groupID, fromTopic, indexName)
 
 
   }

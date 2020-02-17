@@ -400,6 +400,12 @@
             <version>5.0.0.Beta1</version>
         </dependency>
 
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>4.1.16.Final</version>
+        </dependency>
+
         <!-- db pools -->
         <dependency>
             <groupId>com.alibaba</groupId>
