@@ -14,6 +14,15 @@ object QRealTimeDO {
   }
 
 
+  /**
+    * kv结构
+    */
+  case class QKVBase(key:String, value:String)
+
+
+  //==========================================================
+
+
 
   /**
     * 用户行为日志维表数据

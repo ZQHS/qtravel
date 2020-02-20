@@ -189,25 +189,25 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
     */
   def checkData(value: OrderWideData): String ={
     var msg = ""
-    if(null == value){
+    if(0 == value){
       msg = "kafka.value is empty"
     }
 
     //产品ID
     val productID = value.productID
-    if(null == productID){
+    if(0 == productID){
       msg = "Travel.order.ESSink.productID  is null"
     }
 
     //出行交通
     val triffic = value.traffic
-    if(null == triffic){
+    if(triffic == 0){
       msg = "Travel.order.ESSink.triffic  is null"
     }
 
     //时间
     val ctNode = value.ct
-    if(null == ctNode){
+    if(ctNode == 0){
       msg = "Travel.order.ESSink.ct is null"
     }
 

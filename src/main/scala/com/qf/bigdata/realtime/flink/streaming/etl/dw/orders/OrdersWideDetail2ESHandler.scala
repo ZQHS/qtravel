@@ -142,7 +142,7 @@ object OrdersWideDetail2ESHandler {
         *   (2) 通用类型ESSink：CommonESSink
         */
       val orderWideDetailESSink = new CommonESSink(indexName)
-      //esDStream.addSink(orderWideDetailESSink)
+      esDStream.addSink(orderWideDetailESSink)
 
       env.execute(appName)
     }catch {

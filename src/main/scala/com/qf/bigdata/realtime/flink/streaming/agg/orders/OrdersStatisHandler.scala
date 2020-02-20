@@ -168,7 +168,7 @@ object OrdersStatisHandler {
         *   自定义ESSink输出
         */
       val orderWideDetailESSink = new CommonESSink(indexName)
-      //esDStream.addSink(orderWideDetailESSink)
+      esDStream.addSink(orderWideDetailESSink)
 
       env.execute(appName)
     }catch {

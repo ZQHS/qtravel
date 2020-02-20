@@ -73,21 +73,8 @@ object OrdersDetailHandler {
                                            .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
                                            .map(new OrderDetailDataMapFun())
                                            .assignTimestampsAndWatermarks(ordersPeriodicAssigner)
-      //orderDetailDStream.print("order.orderDStream---")
+      orderDetailDStream.print("order.orderDStream---")
 
-
-      /**
-        * 5 旅游产品订单数据聚合(消费合计)
-        *   分组：旅游产品ID
-        *   窗口时间：10秒
-        *   延迟时间：5秒
-        */
-      val aggDStream:DataStream[_] = orderDetailDStream
-        .keyBy(_.productID)
-        .window(TumblingEventTimeWindows.of(Time.seconds(10)))
-        .allowedLateness(Time.seconds(5))
-        .sum("price")
-      aggDStream.print("order.aggDStream---:")
 
 
       /**
@@ -105,7 +92,7 @@ object OrdersDetailHandler {
 
       //加入kafka摄入数据时间
       travelKafkaProducer.setWriteTimestampToKafka(true)
-      //orderDetailDStream.addSink(travelKafkaProducer)
+      orderDetailDStream.addSink(travelKafkaProducer)
 
       env.execute(appName)
     }catch {
@@ -130,11 +117,12 @@ object OrdersDetailHandler {
 
     //kafka数据源topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "test_ods2"
+    val fromTopic = "test_ods"
 
 
     //kafka数据输出topic
-    val toTopic = QRealTimeConstant.TOPIC_ORDER_DW
+    //val toTopic = QRealTimeConstant.TOPIC_ORDER_DW
+    val toTopic = "test_dw"
 
     //kafka消费组
     val groupID = "group.OrdersDetailHandler"

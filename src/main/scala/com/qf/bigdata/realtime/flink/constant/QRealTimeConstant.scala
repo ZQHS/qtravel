@@ -372,6 +372,17 @@ object QRealTimeConstant {
   val SCHEMA_PUB = "pub_id,pub_name,pub_star,pub_grade,is_national"
 
 
-  val REDIS_DB = 0
+  //===Redis conf================================
+  val REDIS_CONF_HOST = "redis_host"
+  val REDIS_CONF_PASSWORD = "redis_password"
+  val REDIS_CONF_TIMEOUT = "redis_timeout"
+  val REDIS_CONF_PORT = "redis_port"
+  val REDIS_CONF_DB = "redis_db"
+  val REDIS_CONF_MAXIDLE = "redis_maxidle"
+  val REDIS_CONF_MINIDLE = "redis_minidle"
+  val REDIS_CONF_MAXTOTAL = "redis_maxtotal"
 
+  val REDIS_CONF_PATH = "redis/redis.properties"
+
+  val REDIS_DB = 0
 }

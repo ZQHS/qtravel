@@ -217,17 +217,19 @@ object OrdersWideAsyncHander {
     val groupID = "group.OrdersWideAsyncHander"
 
     //kafka数据源topic
-    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    val fromTopic = "test_ods"
 
     //kafka数据输出topic
-    val toTopic = QRealTimeConstant.TOPIC_ORDER_DW_WIDE
+    //val toTopic = QRealTimeConstant.TOPIC_ORDER_DW_WIDE
+    val toTopic = "test_dw"
 
 
     //1 维表数据异步处理形成宽表
-    //handleOrdersWideAsyncJob(appName, groupID, fromTopic, toTopic)
+    handleOrdersWideAsyncJob(appName, groupID, fromTopic, toTopic)
 
     //2 多维表数据异步处理形成宽表
-    handleOrdersMWideAsyncJob(appName, groupID, fromTopic)
+    //handleOrdersMWideAsyncJob(appName, groupID, fromTopic)
 
 
 

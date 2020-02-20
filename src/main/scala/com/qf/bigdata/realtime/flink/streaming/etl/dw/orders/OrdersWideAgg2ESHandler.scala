@@ -72,6 +72,7 @@ object OrdersWideAgg2ESHandler {
       //productDS.print("JDBC.DataStream===>")
 
       /**
+        *   3 维表数据提取
         *   (1)维表数据状态描述对象
         *   (2)维表数据广播后(broadcast)形成广播数据流
         */
@@ -83,7 +84,7 @@ object OrdersWideAgg2ESHandler {
 
 
       /**
-        * 3 kafka流式数据源
+        * 4 kafka流式数据源
         *   kafka消费配置参数
         *   kafka消费策略
         */
@@ -104,7 +105,7 @@ object OrdersWideAgg2ESHandler {
 
 
       /**
-        * 5 创建旅游产品宽表数据
+        * 6 创建旅游产品宽表数据
         */
       val orderWideDStream :DataStream[OrderWideData] = orderDetailDStream.connect(dimProductBCStream)
         .process(new OrderWideBCFunction(QRealTimeConstant.BC_PRODUCT))
@@ -112,11 +113,11 @@ object OrdersWideAgg2ESHandler {
 
 
       /**
-        * 6 数据输出Sink
+        * 7 数据输出Sink
         *   自定义ESSink输出(基于ES局部更新实现累加功能)
         */
       val windowOrderESSink = new OrdersWideAggESSink(indexName)
-      //orderWideDStream.addSink(windowOrderESSink)
+      orderWideDStream.addSink(windowOrderESSink)
 
       env.execute(appName)
     }catch {

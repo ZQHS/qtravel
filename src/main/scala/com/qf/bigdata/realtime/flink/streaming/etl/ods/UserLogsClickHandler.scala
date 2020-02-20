@@ -80,8 +80,8 @@ object UserLogsClickHandler {
         * 4 点击数据写入ES
         *   (1)自定义ES-Sink
         */
-//      val clickESSink = new UserLogsClickESSink(indexName)
-//      clickDStream.addSink(clickESSink)
+      val clickESSink = new UserLogsClickESSink(indexName)
+      clickDStream.addSink(clickESSink)
 
 
       env.execute(appName)

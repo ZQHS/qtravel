@@ -1,307 +1,64 @@
-# X程旅游
+X程旅游
 
-## 第一章 业务需求
+概要设计说明书
 
-### 第一节 旅游行业描述
+作        者：千锋大数据团队
 
-```
-“旅游大数据”是指在旅游的“住行游购娱”六要素领域所产生的数量巨大、快速传播、类型多样相关（有结构和非结构的）、富有价值的数据集合，并且可以通过大数据技术（例如云计算、分布式存储、流运算、大数据算法、NoSQL数据库、SOA结构体系等）进行数据相关性分析和数据可视化，从而使游客消费者的决策更加有效便捷，提高满意度。
+完成日期：20200118
 
-旅游大数据除了具有大数据4个基本特点（大量、高速、多样、价值）外，它更加动态、密集，同时旅游行业是信息高度依赖型产业，本身就是大数据最佳的试验田。因此大数据在旅游行业起步时间非常短，但是发展非常迅速。被习大大夸赞的贵州大数据，其中旅游大数据也是其中一大亮点之一。根据统计数据分析，社交媒体上用户产生内容（UGC）超过60%的内容是是与旅游相关。 “旅游大数据”是指在旅游的“住行游购娱”。六要素领域所产生的数量巨大、快速传播、类型多样相关（有结构和非结构的）、富有价值的数据集合，并且可以通过大数据技术进行数据相关性分析和数据可视化，从而使游客消费者的决策更加有效便捷，提高满意度。旅游行业是大数据应用的最佳试验田。
-```
+签  收  人：千锋大数据团队
 
+签收日期：20190120
 
+ 
 
-### 第二节 应用案例
+修改情况记录：
 
-#### 旅游行业消费数据洞察
+| 版本号 | 修改批准人 | 修改人 | 安装日期 | 签收人 |
+| ------ | ---------- | ------ | -------- | ------ |
+| 1.0    |            |        | 20190115 |        |
+| 1.1    |            |        | 20200215 |        |
+|        |            |        |          |        |
 
 
 
-用户关键词搜索条件
+## 第一章 课程计划
 
-![](pic\travel_user_search_condition.png)
+-  介绍项目背景 
 
+-  项目总体概述 
 
+- 项目功能描述 
 
-用户预订偏好分布
+- 项目架构 
+- 实时计算平台 
+- 实时BI可视化
 
-![](pic\travel_user_preorder_time.png)
 
 
+## 第二章 项目背景
 
+### 第一节 背景描述
 
+​		“旅游大数据”是指在旅游的“住行游购娱”六要素领域所产生的数量巨大、快速传播、类型多样相关（有结构和非结构的）、富有价值的数据集合，并且可以通过大数据技术（例如云计算、分布式存储、流运算、大数据算法、NoSQL数据库、SOA结构体系等）进行数据相关性分析和数据可视化，从而使游客消费者的决策更加有效便捷，提高满意度。
 
-用户群体消费特征
+​		随着大数据技术在各行各业的落地为企业和用户提供了真实有意义的帮助，但传统的离线计算也随着人们需要了解数据实时情况的迫切需求而导致问题日益突出，实时流式大数据分析正在成为人们新的关注点，旅游行业也不例外，企业也需了解用户的实时行为、尤其是异常动作，另外实时推荐也是越来越起到增加用户粘性、加强用户体验、改进运营方向的重点任务。
 
-![](pic\travel_user_cluster_feature.png)
+​		在传统大数据架构的基础上，流式架构数据全程以流的形式处理，在数据接入端将ETL替换为数据通道。经过流处理加工后的数据，以消息的形式直接推送给了消费者。存储部分在外围系统以窗口的形式进行存储。适用于预警、监控、对数据有有效期要求的情况。
 
 
 
-```
-旅游行业消费数据洞察
-基于亿级用户的消费行为数据来支持旅游行业的发展趋势，我们不仅要了解获取客户和促进转化的有效途径，更是需要洞察到消费者需求动机、决策流程、以及消费体验和口碑传播的影响力。在如今，随着中国经济的增长，人均可支配收入增多，推动中国旅游行业正式迈入了大众旅游时代，关注他们的来源途径、预订决策流程、消费喜好、入住体验和口碑点评等，这些行为数据的掌握有助于帮助和促进整个旅游行业及其相关其他相关行业的健康发展。
 
-1 用户消费数据洞察
-(1) 旅游形式
-	统计显示，自助游上升趋势明显
-	
 
-(2) 搜索行为
-	搜索行为包含了用户的潜在心理需求，如对地理位置、酒店等级、价格或特色服务等等的需求。这些潜在需求往往和消费者的个人属性、消费特征以及外界环境等相关，这往往是消费者预订决策的开端。例如对旅游目的地和关键词的搜索数据进行用户消费习惯的分析并进行用户群体画像或用户画像。
-	
-	* 目的地搜索
-	  统计显示，一线城市依然是酒店目的地搜索量最高的区域，这主要和该城市区域的经济发展状况，以及城市旅游品牌形象和度假服务设施的完善相关联。另外自然风光较好的城市地区也是用户的重点搜索目的地，同时旅游行业受用户消费能力、个人喜好、节假日、气候影响呈现用户的多元选择，如国外旅游、海滨旅游城市、人文景区等等；同时较之以往的以城市景区为最小旅游单位的形式划分逐渐被热门景区、热门商区所取代或成为用户的核心需求。例如杭州西湖湖滨商圈、南京新街口商圈、广州火车东站、天河体育中心、上海陆家嘴金融贸易区、北京天安门、王府井地区等等。
-	  搜索频次的相关统计来看，人均搜索频次和搜索总人数之间有时未形成一致性关系，例如厦门虽然在搜索总人数上未进入到前10,但在人均搜索频次上是排名最高的城市，这反映了用户对于不同旅游城市在其心中的比重程度。
-	  
-	* 关键词搜索
-	  关键词搜索为强心智搜索行为，意味着消费者在搜索过程中有着比较明确的目标选择，希望展现结果更加符合其需求，缩短选择预订酒店的时间成本.例如价格、位置距离、酒店级别、所属商圈位置、交通便利度等等。例如在位置距离中，“距离”、“商业区”和“机场车站”的选择依然是排在前列的筛选条件；在星级选择中，“五星/豪华”、“四星/高档”酒店仍然表现的比较耀眼，总占比为76%。另外较之与传统印象中的价格因素在如今的搜索选择中所占比率较低，可以看出用户对价格的敏感度有所降低，甚至出现“花钱买时间“、”花钱买安全“趋势。尽管如此，但大部分用户表示还是会综合酒店位置、星级和评价等因素选择性价比相对高一点的酒店。除此之外，我们还看到用户对酒店特色、酒店品牌、房型/早餐也出现了前所未有的关注度，选择场景更加具有个性化。在酒店特色选择方面，用户更加倾向于选择亲子酒店、浪漫情侣、休闲度假;在设施服务方面，用户更倾向于是否有接送服务和免费停车;酒店SPA也开始成为受欢迎的小众服务。
-	  
+### 第二节 行业特征
 
-(3) 浏览行为
-	如果说消费者搜索行为与酒店展现、曝光相关，那么消费者浏览行为会关系着旅游产品、交通选择、酒店住宿的转化，目前用户更关注经过评论、查看、比较等形式找到性价比或服务更为优质的产品。
-	用户在搜索和浏览过程中，产品是否能进入到用户的候选名单中就变得非常重要，例如酒店的图片内容、点评内容、性价比、地理位置、关键词场景的排名和曝光等等，都会成为影响用户决策的关键因素。
-	例如2016.6-2017.6期间，用户经历搜索、浏览、查看、对比之后，在最后一次浏览过程中，分别有53.38%的用户查看1家酒店就直接预订了，相比上一年同期增长了3.12%; 25.61 %的用户查看2~3家酒店之后直接预订，相比上一年同期增长了 1.34%; 12.66%的用户查看了 4~6家酒店之后直接预订，相比上一年同期下降了1.13%。12.81 %的用户依然查看6家以上的酒店之后直接预订，相比上一年同期下降了3.33%。从中可以看出，用户在最后预订决策时表现得非常直接。同时，从搜索、浏览、查看、对比到预订的整个过程中，我们选取了酒店需求量排名前20名的市级行政区酒店的预订前浏览酒店数进行了分析。其中，三亚和香港位居前列，用户从浏览到预订平均分別浏览了79.7家和46.5家酒店；昆明和武汉排名相对靠后，均为17.4家酒店。这主要是和该城市的旅游属性有关，旅游属性越强，消费者决策时间也会变得越长，在下单之前浏览的酒店数量会越多，从而导致酒店之间的竞争变得越激烈。
-	
 
-(4) 预订行为
-	除了搜索和浏览外，近些年来消费者的预订行为出现了较大转变，提前预订的时间越来越短，预订的时间越来越碎片化,说走就走的特性愈加明显。
-	* 提前预定的时间长短
-	  根据数据统计显示.已有轺过半数以上的用户会选柽当天预订当天入住，还有26%的用户选择提前1~ 3天预订，提前1周及以上预订的用户占比仅为13%。
-	
-	* 预定时间段
-	  从每天、每周、每年的时间维度来看，消费者产生预订行为的时间段也变得比较均衡，一方面是因为无线技术的发展，手机预订变得更加便捷，消费者的时间变得更加碎片化；另一方面是消费者生活态度发生了较大转变，“率性而为”“及时行乐”的生活态度成了现在生活的一种时尚。
-	  【24小时/天】：每天早上9点到晚上11点为消费者的主要工作和休闲时间，也是酒店预订的主要时间段。在这段时间内，下午4点和5点为预订高峰，上午11点和晚上9点为预订次高峰。
-	  【7天/周】：每周中，周五为预订高峰，周一到周四预订变化不大，周末反而成为低峰时间段。
-	  【12个月/年】：从统计结果中可以看出春季和夏季为酒店预订的高峰期，秋季和冬季除了十一、元旦、春节长假外，预订量相对出现下降趋势，尤其是11月和2月为明显的预订的低谷。
-	  
-	* 预定天数
-	  预定天数反映了用户对该城市旅行的心理预期，同时也反映了用户的旅游属性。例如对酒店需求量排名前20名城市酒店的平均入住时长进行了具体分析。在这20个城市中，60%以上的消费者仅入住一天的城市数超过了一半。昆明、天津、长沙三个城市入住一天的消费者占比分别达到68.2%、67.4%和66.2%。三亚入住一天的占比最低，仅为33.4%,入住五天及以上的占比达到13.3%。从数据上可以看出，商务型城市入住一天的占比要高于旅游型城市。其次，受目的地游玩项目的影响，澳门、香港和厦门相比其他城市在入住两天的占比上位列前三，也说明这三个城市中短途出行较为常见。
-	
-	* 预定房型
-	  在房型选择上，用户普遍关注“床型、是否含早、房间面积、取消政策”，对“是否价格最低”关注度相对降低。根据2017年订单数据统计显示，选择含早房型的用户占据了35.52%；不含早房型的用户占64.48%。同时，根据携程用户调研结果显示，男性用户与女性用户在房型选择上会有一些差异，男性用户比女性用户更加偏爱含早房型，女性用户比男性用户更加关注室内布局和窗外的视野与景观。
-	
 
-(5) 点评行为
-	参考用户点评，获取口碑推荐，是消费者在购买决策中的重要一环，正向的点评内容和口碑推荐，往往会提升产品购买转化率；反之，降低产品购买的转化率。这使得用户创作的点评内容、分享内容对其他用户的决策购买行为产生着重要的影响。
-	* 点评数量及质量分析
-	  豪华型酒店平均点评量最高，2016年7月至2017年6月每家酒店平均产生了近1100条点评；其次是高挡型酒店平均每家产生近600条点评。与上一周期相比，各类型的酒店平均点评数都有所降低，豪华型下降幅度最小，下滑幅度最大是非星级型酒店（具体见图17)。从消费者的点评内容分析发现，点评中消费者对酒店体验评价也越来越明确，也就是说点评的质量越来越高，平均一条点评可以分析出近4个酒店要素的体验感。预订酒店时点评是消费者决策因素之一且权重越来越高，而另一面消费者写点评的意愿在降低，酒店应利用一些运营策略平衡好两者之间的冲突,引导消费者有意愿分享入住体验。
-	* 点评满意度分析
-	  在满意度方面，全国酒店整体呈良好状态。其中，白皮书对20个重点城市酒店的服务、价格、设施、卫生、位置和餐饮六大维度的点评满意度进行详细分析。例如从统计排名【市级行政区六大维度用户满意度】20个城市在酒店各维度上，设施平均满意度为63.49%,较同期有明显提升;酒店的选址备受消费者的肯定，位置平均满意度为91.51%,达到了优的水平；餐饮和价格较同期提升较为明显，平均满意度分别为80.88%、86.74%，服务(89.61 %)和卫生(81.65%)平均满意度几乎和同期持平。同时，从用户的角度出发，还分析了用户重点关注的维度【卫生间卫生、酒店矂音、停车场、网络、床品五个要素获得的平均观点数和平均满意度及同期对比平均观点数与平均满意度】
-	  
+![1582083367595](pic\travel_users.png)
 
-（6）消费者群体特征分析
-	对消费者群体的划分和研究，有助于旅游行业、交通工具、酒店住宿的市场进行定位和细分，明确其服务的消费群体心理需求，并根据不同的消费群体特征提供与之相对应的市场营销策略，提升营销活动的有效性，减少盲目的投入。
-	* 90后群体
-	  例如近3年来，随着交通出行的多元化、便利化特点，用户出行的年龄结构也在呈现多元化趋势。例如30岁以下用户较去年增长19%，而近1年的新增用户也以30岁以下年轻用户为主(16、17年新注册用户中30岁以下占比56%)；年轻用户的收入水平并不高，但对酒店的心理价位均高于平均水平。
-	  
-	* 美食类群体
-	  对于美食用户的酒店餐饮需求，白皮书随机选取了 1840名有效用户参与了《酒店餐饮需求问卷调查》，其中有74%的用户表示希望能有特色餐厅推荐，43%的用户考虑餐厅打折/优惠券。在酒店餐饮产品的需求上除了早餐和晚餐外，Bruch的需求也是相对较高的餐饮产品。
-	  
-	* 亲子用户群
-	  亲子用户群体普遍在孩子4岁以内完成首次亲子出行，其中一线城市的亲子用户会在孩子更小的时候就带孩子旅行，不同年龄段的孩子呈现的旅游目的地选择也呈现多元化、节假日井喷等现象。另外，由于涉及孩子出行，用户在进行选择决策时考虑的维度优先级别也会不同，在预订酒店这类用户的关注的因素还是普遍集中在地理位置、用户评价和服务质量，对酒店价格的关注较弱；在预订的酒店类型中以五星/豪华型和四星/高档型酒店为主，分别占比为36%和33%;对儿童早餐、儿童游乐设施、儿童泳池以及与其相对应的政策非常关心。
-	  
-	  
-```
 
 
-
-#### 酒店住宿行业分析
-
-
-
-酒店等级分布
-
-![](pic\travel_pub_level_stat.png)
-
-
-
-酒店评分分布
-
-![](pic\travel_pub_score.png)
-
-
-
-
-
-```
-1 酒店住宿行业市场发展趋势
-  * 酒店数量和房间数量也出现了相应的增长，平均增长率为7.68%和8.2%
-  * 酒店数增速最快的省份地区为：【上海、青海、海南、云南、台湾、甘肃、广东】
-  * 在线住宿需求：增长率高达28.8%
-  * 在线住宿价格：与上一年同期基本持平
-  * 酒店等级选择：
-		# 豪华型、高档型酒店和经济型及其他等级酒店增速放缓,分别为(8.99%、9.41%、7.39%)
-		# 舒适型酒店市场却增长强劲，供给增长率高达13.41%
-		
-2 酒店住宿供给分析
- * 酒店供给增长速度： 
- 	  # 西北地区发展势头良好，其中青海和甘肃的房间数量增长率分别达到20.5%和12%
- 	  # 从城市供给量来看，无论是酒店数量还是房间数量，城市的酒店供给仍然集中在大中型城市。北京在房间数供给量上位居首位，其次为上海和广州
- 	  # 在房间供给的增长率上，青岛供给增长率最高，达到了16.0%，其次是郑州和成都；在超一线城市中，上海、广州的增长率均高于北京，分别为12.0%和12.5%
- 	  
- * 各等级酒店供给分析：
- 	  # 商务型城市经济和舒适型酒店占比较高。例如 郑州、济南的经济型酒店房间占比超过全市酒店房间总数的四分之三。北京、上海、广州、深圳四个超一线城市经济型酒店占比略低，分别为65.1%、59.5%、66.4%和63.8%。
-	  # 中档舒适型和高档型酒店房间占比较为接近，例如 苏州、三亚和大连则呈现出高档型酒店房间数占比高于舒适型酒店的趋势。其中苏州高档型酒店房间数占比14.2%，而舒适型酒店房间占比则为11.4%。
-	 # 豪华型酒店房间数占，热门旅游地占比较高，例如三亚仍然遥遥领先，达到26.0%。北京的豪华型酒店房间占比稍低（8.8%)，不及上海的11.7%。二线商务型城市豪华型酒店占比则更低，济南占比仅为2.9%
- 	
- 	  
-3 酒店住宿需求分析
-  * 整体规律： 酒店在线需求量和增长率与酒店供给区域分布基本匹配。例如 上海酒店需求增长率达到35.2%，其需求总量超过北京成为全国酒店需求量第一位的城市。北京酒店市场整体较为饱和，在供给量增长缓慢的同时，酒店需求的增长率也较为缓慢。
-  * 旅游度假城市增速较快：对于一些新兴旅游景区城市，需求增长最快的四个城市分别为：遵义、绵阳、赣州和贵阳，其需求增长率均高于70%  	
-```
-
-
-
-####  旅游行业流量预测
-
-```
-旅游行业流量预测：
-2010年上海世博会，我们持续184天进行未来3天和一周的入园人数预测，其中可靠预测了次高峰值——预测96万当天，而实际是106万人入园，是预测机构当中最接近事实的（在此之前，平均每天不到50万入园）。这些数据，我们提供给上海市旅游局、黄浦区旅游局及其他相关单位、旅游企业参考，帮助旅游局及相关部门疏导各入口入园人数、引导旅游团队、提前配备保安警力做参考。
-
-主要是基于团队预约数据（世博团队门票预定预约系统）与实际入园人数，结合人气指数、自然周变动规律、天气因素及团队拉动因素等主要影响因子构建模型预测而得。
-```
-
-![](pic\shiboyuan_stat.jpg)
-
-
-
-```
-旅行社的产品设计出谋划策:
-新升级的赴台社如果想做台湾旅游线路，可以先从8日的行程开始考虑，比较容易被大部分赴台游潜在客户所接受；而老的赴台旅行社如果想拓展市场，产品上可以考虑增加彰化的游览行程（彰化原来属于冷门目的地，但2014年冲入台湾旅游城市前十位，可以看出它的游览需求量在明显增长）.
-
-```
-
-![](pic\taiwan_tourism.jpg)
-
-
-
-![](pic\china_tourism.jpg)
-
-总结
-
-```
-旅游行业与大数据的关联很多，围绕着“住行游购娱”六要素领域所产生的数量进行分析预测，如交通大数据、气象大数据、美食数据、生活消费数据等等
-```
-
-
-
-
-
-#### 用户消费数据洞察数据分析
-
-##### 旅游产品相关
-
-```
-(1) 整体运营方面
-旅游形式统计并在此基础上进行多维分析
- * 旅游形式统计：整体计算分析出行人群的旅游形式选择(周末游、跟团游、自由行、私家团)的PV、UV统计及费用相关    统计。
- * 旅游形式统计的同比与环比
- * 旅游形式多维统计：整体计算分析出行人群的旅游形式选择(周末游、跟团游、自由行、私家团)的PV、UV统计及费用    相关统计。涉及的多维度选择为【用户性别、年龄、出发地、目的地、群体或单人、国内游或国外游、旅游时间长短】
-	  
-    
-(2) 预定行为分析
-根据不同时间周期设置【当天、1天、3天、7天、15天、30天、90天】进行的预订行为数据分析
-* 基于预定行为进行趋势分析
-  统计未来N天的热门产品、热门目的地、热门景区、热门路线、热门酒店并呈现趋势变化图
-* 对于热门趋势的旅游产品进行宣传、优惠活动等营销措施
-  统计营销措施的活动效果
-    
-
-(3) 用户行为日志分析
-用户粘性分析
-* 以启动APP或上线统计用户的喜好程度、使用习惯、使用习惯的群体划分(聚类分析)
-   	   
-
-用户搜索分析
-* 目的地搜索统计： 例如 以【旅游地区、旅游目的地】进行搜索统计PV、UV，旅游目的地TopN
-* 关键词搜索统计
-   	 统计热门搜索关键词，例如【旅游城市名】、【旅游景区】、【特征词汇：仙境、温泉、美食等】这些可能跨越多个   维度字段，如旅游产品名称、旅游产品标签、旅游景区名称等等
-* 过滤方式、排序方式汇总热门组合条件
-  结合搜索条件形成热门旅游产品、热门酒店等的热门组合条件并可进行推荐，另外也可基于此数据进行用户画像分析。
-   	   
-
-浏览行为分析
-* 对不同维度进行浏览行为分析  例如 【产品分类、浏览时长、类似产品对比、对比数量】
-   	   	   
-
-点评行为分析
-* 统计用户的点评数量。
-* 根据点评对旅游产品、景区进行打分评价。
-* 根据打分评价对旅游产品进行满意度分析。
-   	   	   
-
-用户意向及去向分析
-* 产品意向：统计某些产品、酒店的到达情况前的路径过程并可在到达目的页面前N站进行广告设置
-* 产品去向：系统对用户进行了推荐处理，统计用户离开目的地页面后的去向分析
-```
-
-
-
-##### 酒店相关
-
-```
-(1) 酒店业务订单数据统计
-基于【酒店分类、酒店等级、酒店所属地区、用户年龄、用户性别、酒店标签、入住时长】
- * 酒店业务订单数据多维统计：基于以上维度进行PV、UV统计及费用相关的多维计算分析。
-
-(2) 酒店浏览日志统计
-基于【酒店分类、酒店等级、酒店所属地区、酒店标签、酒店品牌】
- * 酒店浏览数据多维统计：基于以上维度进行PV、UV统计统计分析。
-
-(3) 用户搜索分析
-* 常用选择过滤条件
-	主题分类：商业区、机场/火车站、大学等
-	评分标准：4.5分以上
-	星界标准：3星+
-	价格区间：300-450
-	点评数量： 1000+
-	品牌选择： 如家、汉庭等
-	酒店类型： 快捷连锁、高端连锁、客栈等
-	特色标签： 温泉酒店、亲子酒店
-* 基于用户画像在相似用户间进行推荐
-* 形成用酒店住宿的户群体画像
-  
-
-(4) 酒店点评
-* 统计用户的点评数量。
-* 根据点评对酒店进行打分评价。
-* 根据打分评价对酒店进行满意度分析。
-```
-
-
-
-##### 票务相关
-
-```
-(1) 票务搜索统计
-火车票
-	* 基于【出发地、目的地、出发日期、车型(KT|D|G)、座席类别(商务座、一等、二等、软卧、硬卧、硬座)】统计【出发地 -> 目的地】间的热门车次、热点日期
-	* 意向目的地统计及趋势
-	
-飞机票
-	* 基于【出发地、目的地、出发日期、航空公司、机型(大型机、中型机)、舱位(头等舱、经济舱)】统计【出发地 -> 目的地】间的热门班次、热点日期
-	* 意向目的地统计及趋势
-
-(2) 票务订单统计
-火车票
-	* 基于【出发地、目的地、出发日期、车型(KT|D|G)、座席类别(商务座、一等、二等、软卧、硬卧、硬座)、用户性别、用户年龄】统计人数、费用
-	* 同一出发地的目的地去向统计
-	
-飞机票
-	* 基于【出发地、目的地、出发日期、航空公司、机型(大型机、中型机)、舱位(头等舱、经济舱)、用户性别、用户年龄】统计人数、费用
-	* 同一出发地的目的地去向统计
-```
-
-
-
-
-
-
-
-### 第三节 行业特征
-
-- 用户数量：近亿级
+- 用户数量：近亿级[2019年数据会有变化，但前几位基本在千万级别，另外携程与去哪儿合并]
 
 ```
 【携程】  亿级 
@@ -311,7 +68,7 @@
 【途牛】   千万级
 ```
 
-活跃用户：千万级
+​	活跃用户：千万级
 
 ```
 【携程】  千万级(5588万) 
@@ -325,135 +82,233 @@
 
 - 数据量级
 
-​	 请求级别：亿级 每天TB级的增量数据，近百亿条的用户数据，上百万的产品数据
+```
+假设单条数据大小大约为1KB 
+1 业务数据总量： 业务数量 * 活跃用户 * 用户系数 * 业务行为数量
+
+2 数据量估算
+示例 
+用户行为数量= 4096W（活跃用户） * 1.5 (用户系数) * 1KB(单条数据大小) * 20(数据条) 【20 - 100范围】
+          = 10000 * 1.5 * 4MK * 20 【20 - 100范围】
+          = 1200GK
+订单业务 = 4096W（活跃用户）* 0.01（订单百分比）* 1KB(单条数据大小)
+        = 10000 * 0.01 * 1MK
+        = 100GK
+酒店和车票业务相对于旅游订单属于高频业务（发生次数较多），尤其是日志数据
+
+3 总结：综合以上场景基本上日均数据量大约为TB级别
+  注意：
+	(1) 由于企业知名度和用户认可度不同，再加上旅游行业与季节、时间关系密切，可能在局部时间范围内会出现高并发的海量数据，个别时间呈现极地的数据量，所以数据量只能是个估算值，只要接近企业的大概数据级别即可。
+    (2) 可使用网络公开的数据估算，如XX报告：每天TB级的增量数据，近百亿条的用户数据，上百万的产品数据     
+```
+
+​	 
 
 
 
-- 集群规模
-
-  万台+ | 千台+
-
-  
-
-- 生活娱乐类服务场景APP
-
-  用户交易订单不会高频率呈现，但会集中于个别时间节点(如公共假期、周末、寒暑假等)
-
-  旅游行业作为综合性产业覆盖了：住宿、餐饮、购物、交通等其他相关行业，多元化结合
-
-  用户交互信息数量巨大，而且会涉及其他社交类APP的使用
-
-
-
-- 核心业务介绍
+- 集群规模(实时相关)
 
 ```
-1 旅游产品业务
-2 相关业务：车票、酒店等紧密关系业务
-3 用户交互
-	3.1 用户行为
-		* 评论
-		* 点赞
-		* 分享、转发
-		* 收藏
-		* 关注
-	3.2 用户与用户
-		* 关注、推荐、邀请（关系：好友、粉丝）
-		* 圈子
-4 消息
-	4.1 系统推荐（活动、推广）
-	4.2 用户间消息
-	
-5 画像
-	用户群体画像
-	用户画像
+Job数: 
+	30W+
+Hadoop集群：
+	2000+
+消息规模：
+	Topic 1300+、增量 100T+ PD、Avg 200K TPS、Max 900K TPS
 
-6 运营
-	* 用户层次定位、用户构成
-	* 用户粘性：DAU|MAU
-	* 各种离线、实时统计指标
-	* 各种业务的实时推荐
+注意：集群按不同技术分别有存储、消息通道、搜索等等，另外不同的业务重要程度、数据量级也不同，即使是使用同一种技术在优化技术方案时也会拆分不同集群，再加上容器化、虚拟化技术的运用，数据也在不断增加，所以集群规模不是一成不变的。
+
 ```
 
 
 
-
-
-## 第二章 技术架构
-
-### 技术架构图
-
-
-
-![](pic\travel_bigdata_platform.png)
-
-
-
-
-
-### 实时场景数据处理流程图
-
-
-
-![](pic\realtime_olap.png)
-
-
-
-
-
-
-
-### 技术框架构成说明
+- 用户使用习惯
 
 ```
-一 数据采集
-	1  埋点数据： 
-		   由微服务后台以发送消息形式采集各种埋点数据
-		   Flume日志采集
-	2  业务数据： 
-		   (1) 基于MYSQL的binlog日志
-		   (2) 由微服务后台以消息形式发送
-    3  外部接口数据：
-    		由微服务后台进行相关处理保存在关系型数据库中或以消息形式发送(为了流量削峰)
-
-二 数据通道
-		考虑到高并发下的数据级量采用分布式消息队列 Kafka
-
-三 数据计算
-		离线： Spark
-		实时： Flink
-		交互式查询：
-			(1) 实时明细 Druid
-			(2) 实时聚合 Druid | Redis
-			(3) 实时明细搜索 ES
-			(4) 通用型 ClickHouse
-			(5) 离线指标 Hive（数仓的集市数据或在此基础上的二次加工）
-			(6) 离线或实时的多维分析结果 Kylin
-四 任务调度
-		Azkaban | airflow
-		
-
-五 数据存储
-		离线： Hive | HBase | ES
-		实时：	Druid | ES
-		关联关系： Neo4j | JanusGraph
-		
-六 数据展示：
-		离线展示： echars | apache superset
-		实时展示： Grafana
+	用户旅游订单不会高频率呈现，但会集中于个别时间节点(如公共假期、周末、寒暑假等)高并发的呈现，另外作为一种“特殊”的消费方式，它还和社交媒体、社区等进行信息交互共享提高旅游品牌、旅游地的口碑、宣传推广等相关效应。
 ```
 
 
 
+- 平台业务介绍
+
+  - 核心业务&用户行为日志&访问日志
+
+    - 基于旅游产品业务、酒店住宿业务、车票业务、其他衍生业务产生的数据进行相关指标计算后，获取各类运营报表。
+    - 基于用户行为日志数据为用户画像、用户群体画像、实时推荐提供底层数据支持
+    - 基于访问日志进行反爬虫分析
+
+    - 基于平台产生的各类实时数据制作实时报表、构建实时数仓、构建实时关联关系(部分场景下考虑效率可能离线处理)
+
+      
+
+  - 用户画像&用户群体画像
+
+    - 用户画像
+
+      - 静态标签：用户的性别、地域、职业、生活习惯等
+
+      -  动态标签：用户关注的产品类别、产品偏好、内容偏好
+
+    - 用户群体画像
+
+      -   基于用户使用环境、自然特点、行为特征、喜爱偏好等方面形成的群体划分
+
+      ​         用户使用环境(地域、渠道、使用网络、使用设备、版本等)
+
+      ​         用户特点(性别、年龄、基本兴趣爱好等自然属性)
+
+      ​		 用户行为特征(使用时间、使用时长、使用频率、各类行为统计)
+
+      ​         用户喜好(跟行业相关，简单说就是各类产品中的关注甚至是交易情况)
+
+    - 备注：
+
+      实时推荐需要使用离线标签和实时标签，分别赋予对应权重再使用相关算法才能得出相对可靠准确的推荐结果。
+
+       
+
+  - 数据通道
+
+    - 各类数据的流向通道
+
+    - 解决系统间解耦、高并发问题、数据时效性等问题
+
+    - 系统间的数据共享
+
+      
+
+  - 平台运维
+
+    -  针对各类服务接口、大数据相关集群运行、作业处理等的监控、报警
+
+    
 
 
-## 第三章 数据来源
 
-### 第一节 原始数据
+## 第三章 项目概述
 
-#### <font color="red">旅游相关</font>
+### 第一节 系统功能
+
+| 功能模块     | 备注                                                         |
+| ------------ | ------------------------------------------------------------ |
+| 核心业务     | 基于核心业务数据(包括旅游订单、酒店住宿、车票业务)的相关实时计算指标、实时展示 |
+| 用户行为日志 | 基于产品设计的各种用户行为埋点数据的相关实时计算指标、实时展示 |
+| 风控报警     | 基于用户异常行为数据进行监控并实时报警展示                   |
+
+
+
+​		本项目以大数据实时平台为终极目标，有关实时场景涉及的技术环节以下表呈现，平台按照涉及场景的技术方向构成，成为通用性的技术解决方案来解决实际业务需求。
+
+| 技术方向     | 备注                                                       | 版本 |
+| ------------ | ---------------------------------------------------------- | ---- |
+| 实时数据ETL  | 实时数据清洗、去噪最终形成规范化数据                       | V1.0 |
+| 实时数据统计 | 实现各种实时统计指标                                       | V1.0 |
+| 实时数据存储 | 实时数据落地持久化为实时搜索、实时动态聚合提供技术支持     | V1.0 |
+| 实时规则     | 主要服务于实时风控、报警等相关需求                         | V1.0 |
+| 交互式查询   | 交互式查询明细数据或实时聚合数据(Clickhouse、Apache Druid) | V2.0 |
+| 实时BI       | 主要服务于数据使用方，提供直观的展示形式                   | V2.0 |
+
+
+
+### 第二节 数据流程描述
+
+​		在大数据实时场景下，原始数据源基本上都是通过【消息通道】来完成数据采集、计算的过程。随后根据实际，提供了不同的分布式数据存储方案来满足数据使用方的交互式查询需求(在实时场景下，【时序库】存储形式是一种较好的选择)。最终，统计数据或风控数据应该以BI可视化的形式呈现给数据使用方。
+
+
+
+![](pic\realtime_data.png)
+
+
+
+### 第三节 数据组成
+
+#### 事实数据
+
+##### 旅游订单数据
+
+```
+用户ID：(在一些场景下，平台会为用户构造的唯一编号)
+	userID
+用户手机号：
+	user_mobile
+旅游产品编号：
+	product_id: "598459284410"
+旅游产品交通资源：
+	product_traffic: 旅游交通选择
+旅游产品交通资源：座席
+	product_traffic_grade： 商务|一等|软卧...
+旅游产品交通资源：行程种类
+	product_traffic_type：单程|往返
+旅游产品住宿资源：
+	product_pub: 旅游住宿选择
+所在区域：
+	user_region
+人员构成_成人人数：
+	travel_member_adult
+人员构成_儿童人数：
+	travel_member_yonger
+人员构成_婴儿人数：
+	travel_member_baby
+产品价格：
+	product_price
+活动特价	
+	has_activity：0无活动特价|其他为折扣率如0.8
+产品费用：
+	product_fee
+旅游订单：
+	order_id	
+下单时间：
+	order_ct
+```
+
+
+
+![](pic\xc_order.png)
+
+
+
+###### 旅游订单数据示例
+
+```json
+{
+    "userID": "24225",
+    "user_mobile": "18576342312",
+    "product_id": "210609887",
+    "product_traffic": "01",
+    "product_traffic_grade": "11",
+    "product_traffic_type": "01",
+    "product_pub": "210609887|dd40d0e8",
+    "userRegion": "330500",
+    "travel_member_adult": "2",
+    "travel_member_yonger": "1",
+    "travel_member_baby": "0",
+    "product_price": "5",
+    "has_activity": "9",
+    "product_fee": "13",
+    "order_id": "158201336000021060988724225"
+    "order_ct": "1582013360000",
+    "KAFKA_ID": "a55d114612885e3ff5d93f4fb271e972"  
+}
+```
+
+
 
 ##### 用户行为日志
+
+
+
+用户搜索行为
+
+![](pic\xc_search_condition.png)
+
+
+
+用户浏览产品列表
+
+![1582103115865](pic\xc_search_list.png)
+
+
 
 ```
 行为类型：
@@ -464,8 +319,6 @@
 	userID
 所属设备号(app端的手机设备号)：
 	userDevice
-设备类型：
-	userDeviceType: '1 android| 2 ios | 9 其他'
 操作系统：
 	os
 手机制造商：
@@ -490,53 +343,33 @@
 
 
 
-数据表
+###### 用户行为日志示例
 
-```sql
-create external table if not exists ods_travel.ods_travel_user_log (
- action string COMMENT '行为类型',
- eventType string COMMENT '事件类型',
- userID string COMMENT '用户ID', 
- userDevice string COMMENT 'app端的手机设备号',   
- os string COMMENT '手机操作系统',
- manufacturer string COMMENT '手机制造商',
- carrier string COMMENT '电信运营商',
- networkType string COMMENT '网络类型',
- userRegion string COMMENT '用户所在区域',
- userRegionIP string COMMENT '用户所在区域IP',
- longitude string COMMENT '经度',
- latitude string COMMENT '纬度', 
- exts string COMMENT '扩展信息'   
- ct bigint COMMENT '日志时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_travel_user_log/'
-```
-
-
-
-
-
-###### 行为事件说明
+具体参考（qdata项目：com.qf.bigdata.realtime.enumes.ActionEnum、EventEnum、EventActionEnum）
 
 ```java
-#action行为种类：
-LAUNCH("02", "launch","加载"),
+#行为种类（ActionEnum）：
+INSTALL("01", "install","安装"),
+LAUNCH("02", "launch","加载启动"),
+LOGIN("03", "login","登录"),
+REGISTER("04", "register","注册"),
 INTERACTIVE("05", "interactive","交互行为"),
+EXIT("06", "exit","退出"),
+PAGE_ENTER_H5("07", "page_enter_h5","页面进入"),
 PAGE_ENTER_NATIVE("08", "page_enter_native","页面进入")
 
-#event_type事件类型：
+#动作事件类型（EventEnum）：
 VIEW("01", "view","浏览"),
 CLICK("02", "click","点击"),
 INPUT("03", "input","输入"),
 SLIDE("04", "slide","滑动")
     
-#事件的行为目的
+#事件的行为目的（EventActionEnum）：
 PRODUCT_KEEP("101", "收藏"),
 PRODUCT_APPLAUD("102", "点赞"),
 PRODUCT_SHARE("103", "分享"),
 PRODUCT_COMMENT("104", "点评"),
-PRODUCT_CS("105", "客服");
+PRODUCT_CS("105", "客服")
 ```
 
 
@@ -708,853 +541,233 @@ extinfo={
 
 
 
-##### 旅游产品订单
+#### 维度数据
 
-```
-用户ID：(在一些场景下，平台会为用户构造的唯一编号)
-	user_id
-用户手机号：
-	user_mobile
-旅游产品编号：
-	product_id: "598459284410"
-旅游产品交通资源：
-	product_traffic: 旅游交通选择
-旅游产品交通资源：座席
-	product_traffic_grade： 商务|一等|软卧...
-旅游产品交通资源：行程种类
-	product_traffic_type：单程|往返
-旅游产品住宿资源：
-	product_pub: 旅游住宿选择
-所在区域：
-	user_region
-人员构成_成人人数：
-	travel_member_adult
-人员构成_儿童人数：
-	travel_member_yonger
-人员构成_婴儿人数：
-	travel_member_baby
-产品价格：
-	product_price
-活动特价	
-	has_activity：0无活动特价|其他为折扣率如0.8
-产品费用：
-	product_fee
-下单时间：
-	order_ct
+##### 旅游产品维表
+
+```mysql
+CREATE TABLE travel.dim_product (
+  product_id text NULL COMMENT '旅游产品订单ID',
+  product_level int(11) DEFAULT 0 COMMENT '旅游产品订单级别',
+  product_type text NULL COMMENT '旅游产品订单类型',
+  departure_code text NULL COMMENT '旅游出发地编码',
+  des_city_code text NULL COMMENT '旅游目的地编码',
+  toursim_tickets_type text NULL COMMENT '旅游产品订单类型(编码)'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 
 
-数据表
+![1582019139517](pic\dim_product.png)
 
-```sql
-create external table if not exists ods_travel.ods_travel_orders (
- user_id string COMMENT '用户ID', 
- user_mobile string COMMENT '用户手机号',
- product_id string COMMENT '旅游产品编号',
- product_traffic string COMMENT '旅游产品交通资源',
- product_traffic_grade string COMMENT '旅游产品交通:座席', 
- product_traffic_type string COMMENT '旅游产品交通:行程种类',   
- product_pub string COMMENT '旅游产品住宿资源', 
- user_region string COMMENT '用户所在区域',  
- travel_member_adult int COMMENT '人员构成_成人人数',
- travel_member_yonger int COMMENT '人员构成_儿童人数',
- travel_member_baby int COMMENT '人员构成_婴儿人数', 
- product_price double COMMENT '产品价格', 
- has_activity double COMMENT '活动特价',   
- product_fee double COMMENT '产品费用', 
- order_ct bigint COMMENT '日志时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_travel_orders/'
+
+
+##### 酒店维表
+
+```mysql
+CREATE TABLE travel.dim_pub (
+   pub_id text NULL COMMENT '酒店ID',
+   pub_name text NOT NULL COMMENT '酒店名称',
+   pub_stat int(11) DEFAULT 0 NOT NULL COMMENT '酒店星级',
+   pub_grade text NULL COMMENT '酒店等级编码',
+   pub_grade_desc text NULL COMMENT '酒店等级描述',
+   pub_area_code text NULL COMMENT '酒店所在地区',
+   pub_address text NULL COMMENT '酒店地址',
+   is_national text NULL COMMENT '境内外编码'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 
 
-##### 旅游产品支付
+![1582019294968](pic\dim_pub.png)
+
+
+
+## 第四章 逻辑架构设计
+
+- 逻辑架构设计图
+
+
+
+![](pic\travel_logic_architecture.png)
+
+
+
+## 第五章 功能描述
+
+- 实时数据ETL（通用）
+
+  实时场景下的数据规范，适合大部分业务数据、日志数据，相当于实时数仓中的dw。
+
+  示例：用户浏览产品列表日志数据需要进行数据ETL形成符合要求的规范数据(将列表拆分后形成明细数据)
+
+
+
+- 实时数据宽表构建（通用）
+
+  实时场景下的事实数据关联维表数据后形成宽表数据为下游进行分组聚合提供技术支持(这里不同于离线数仓，由于时效性要求，为了提高计算结果，一般不会持久化类似dm数据进行再次加工使用)。
+
+  示例：旅游订单数据包括了产品维表外键，需要关联后使用维表数据中的维度进行分组聚合计算。
+
+
+
+- 实时数据查询
+
+  实时明细数据：实时场景下的任何明细数据需要持久化到时序库中才能满足交互式查询需求。
+
+  示例：实时订单数据持久化到ES、ApacheDruid、Clickhouse，客户端通过读取这些存储介质获取数据
+
+  
+
+  实时聚合数据：实时场景下的窗口聚合或累计聚合也需要持久化持久化介质才能满足交互式查询需求。
+
+  示例：10分钟滚动窗口内的订单统计、消费统计、PUV统计等
+
+
+
+- connector应用
+
+  常用的connector：jdbc、kafka、es、redis
+
+  实时数据输出ES，虽然Flink有ES的connector，但无法使用es的局部更新，所以需要用户自定义ES Sink，另外也熟悉使用自定义sink。
+
+  示例：旅游订单输出kafka、es，其中维表数据使用flink-jdbc方式读取。
+
+
+
+- 窗口应用
+
+  (1) 基于事件时间的滚动窗口(TumblingEventTimeWindows)统计。
+
+  ​     示例：固定N分钟统计结果（实际事件发生时间）
+  (2) 基于事件时间的滑动窗口(SlidingEventTimeWindows)统计。
+
+  ​     示例：近N分钟统计结果（实际事件发生时间）
+  (3) 基于处理时间的滚动窗口(TumblingProcessingTimeWindows)统计。
+
+  ​	 示例：固定N分钟统计结果（任务处理节点机器时间）
+  (4) 基于处理时间的滑动窗口(SlidingProcessingTimeWindows)统计。
+
+  ​     示例：近N分钟统计结果（任务处理节点机器时间）
+
+  (5) 基于全局窗口(timeWindowAll)统计
+
+  ​	示例：全局窗口统计基于所有数据的统计结果。	
+
+  
+
+- 自定义触发器
+
+  窗口周期较长时，如果想依据数据量或间隔时间输出窗口的中间计算结果，需要使用内置触发器或自定义触发器。
+
+  示例：基于数据量或间隔时间的自定义触发器
+
+
+
+- 状态维护
+
+  实时计算时需要维护中间过程数据即状态维护
+
+  示例：窗口周期内的UV、PV、极值等计算
+
+
+
+- 非窗口方式统计计算
+
+  在不开窗的情况下，如何进行数据聚合计算，即自定义实现process处理函数
+
+  示例：订单非窗口累计聚合计算
+
+
+
+- CEP应用
+
+  复杂事件处理应用场景示例，一般在风控领域或异常数据监测应用较多，本质是定义规则
+
+  示例：用户浏览页面的停留时长应该符合行业特点的[m,n]时间之内，不符合的需要进行监控报警处理。
+
+
+
+- 数据实时采集
+
+  简单来说即通过消费kafka数据进行数据落地，解决了数据使用的时效性问题
+
+  示例：旅游订单数据实时采集落地
+
+
+
+
+
+## 第六章 系统架构
+
+
+
+### 技术架构图
+
+![](D:/qfBigWorkSpace/qtravel/doc/%E9%A1%B9%E7%9B%AE%E6%96%87%E6%A1%A3/pic/travel_bigdata_platform.png)
+
+
+
+
+
+### 实时场景技术方案
+
+
+
+![](pic\realtime_dataflow.png)
+
+
+
+### 技术框架组成
+
+| 框架名称      | 备注           | 版本    |
+| ------------- | -------------- | ------- |
+| Flink         | 实时计算       | 1.9.1   |
+| Kafka         | 消息通道       | 1.1+    |
+| Elasticsearch | 全文搜索       | 6.x+    |
+| Apache Druid  | 时序库         | 0.13+   |
+| Hadoop        | 分布式文件系统 | 2.7.x + |
+
+
+
+### 技术选型说明
 
 ```
-用户ID：(在一些场景下，平台会为用户构造的唯一编号)
-	user_id
-旅游产品编号：
-	product_Id: "598459284410"
-支付费用：
-	pay_fee
-支付方式：
-	pay_type 微信|支付宝|银联等等
-支付网络：
-	pay_network 4G|wifi
-支付时间：
-	pay_ct
-支付结果：
-	pay_result
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists ods_travel.ods_travel_orders_add (
- user_id string COMMENT '用户ID', 
- product_id string COMMENT '旅游产品编号',
- pay_fee double COMMENT '支付费用',    
- pay_type string COMMENT '支付方式',
- pay_network string COMMENT '支付使用网络',
- pay_result string COMMENT '支付结果', 
- pay_ct bigint COMMENT '支付时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_travel_orders_add/'
-```
-
-
-
-#### <font color="red">评论相关</font>
-
-###### 评论相关说明
-
-```
-评论数据由评论人（用户）、评分、评分项、评论内容、评论时间这几部分构成，其中需要说明的是评分项，不同的业务数据（旅游产品、酒店、景区）的评论项不同
-```
-
-评论项示例：
-
-***旅游产品评论***
-
-跟团游(三亚)：【行程安排】、【描述相符】、【导游讲解】
-
-![](pic\common_product_gentuan.png)
-
-
-
-自由行(大理)：【旅行交通】、【酒店住宿】、【附加产品】、【推荐玩法】
-
-![](pic\common_product_ziyouxing.png)
-
-
-
-***酒店评论***
-
-国内酒店评论：【环境】、【设施】、【服务】、【卫生】
-
-![](pic\common_pub_guonei.png)
-
-国外酒店评论：【环境】、【设施】、【服务】、【卫生】
-
-![](pic\common_pub_guowai.png)
-
-
-
-***景区评论***
-
-景区评论：只有评分一项
-
-![](pic\common_scenic.png)
-
-
-
-
-
-##### 旅游产品评论
-
-```
-用户：
-	user_id
-产品ID:
-	product_id
-评分：
-	common_score
-评分项：
-	common_exts
-评论时间：
-	common_ct
-评论内容：
-	common_remark
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists ods_travel.ods_travel_product_common (
- user_id string COMMENT '用户ID', 
- product_id string COMMENT '旅游产品编号',
- common_score double COMMENT '评分',    
- common_exts string COMMENT '评分项',
- common_remark string COMMENT '评论内容', 
- common_ct bigint COMMENT '评论时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_travel_product_common/'
-```
-
-
-
-##### 酒店评论
-
-```
-用户：
-	user_id
-酒店ID:
-	pub_id
-评分：
-	common_score
-评分项：
-	common_exts
-评论时间：
-	common_ct
-评论内容：
-	common_remark
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists ods_travel.ods_travel_pub_common (
- user_id string COMMENT '用户ID', 
- pub_id string COMMENT '酒店编号',
- common_score double COMMENT '评分',    
- common_exts string COMMENT '评分项',
- common_remark string COMMENT '评论内容', 
- common_ct bigint COMMENT '评论时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_travel_pub_common/'
-```
-
-
-
-
-
-##### 景区评论
-
-```
-用户：
-	user_id
-景区ID:
-	scenic_id
-评分：
-	common_score
-评分项：
-	common_exts
-评论时间：
-	common_ct
-评论内容：
-	common_remark
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists ods_travel.ods_travel_scenic_common (
- user_id string COMMENT '用户ID', 
- scenic_id string COMMENT '景区编号',
- common_score double COMMENT '评分',    
- common_exts string COMMENT '评分项(根据业务需求设置目前暂无内容为空)',
- common_remark string COMMENT '评论内容', 
- common_ct bigint COMMENT '评论时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_travel_scenic_common/'
-```
-
-
-
-
-
-#### <font color="red">车票相关(火车票示例)</font>
-
-##### 车票搜索
-
-```
-用户：
-	user_id
-车次：
-	train_number
-车型：
-	train_style(普通|动车|高铁)
-座席：
-	train_seat(商务座|一等|二等|软卧|硬卧|硬座|动卧)
-出发地：
-	train_source
-目的地：
-	train_target
-搜索时间
-	search_ct
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists ods_travel.ods_traffic_train_search (
- user_id string COMMENT '用户ID', 
- train_number string COMMENT '车次',
- train_style string COMMENT '车型',    
- train_seat string COMMENT '座席',
- train_source string COMMENT '出发地', 
- train_target string COMMENT '目的地',
- search_ct bigint COMMENT '搜索时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_traffic_train_search/'
-```
-
-
-
-##### 车票购买
-
-```
-用户：
-	user_id
-车次：
-	train_number
-车型：
-	train_style(普通|动车|高铁)
-座席：
-	train_seat(商务座|一等|二等|软卧|硬卧|硬座|动卧)
-出发地：
-	train_source
-目的地：
-	train_target
-购买价格：
-	buy_price
-购买时间：
-	buy_ct
-购买结果：
-	buy_result
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists ods_travel.ods_traffic_train_buy (
- user_id string COMMENT '用户ID', 
- train_number string COMMENT '车次',
- train_style string COMMENT '车型',    
- train_seat string COMMENT '座席',
- train_source string COMMENT '出发地', 
- train_target string COMMENT '目的地',
- buy_price string COMMENT '购买价格',
- buy_result string COMMENT '购买结果',
- buy_ct bigint COMMENT '购买时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/ods/ods_traffic_train_buy/'
-```
-
-
-
-
-
-### 第二节 实时数据
-
-##### 用户日志行为实时日志
-
-```
-用于KAFKA分区使用的ID：
-	KAFKA_ID: 多字段混合后哈希函数处理得值
-会话ID:
-	sid
-行为类型：
- 	action： 'launch启动| interactive交互| page_enter页面曝光(产品页展示)'
-事件类型：
-  	eventType： 'view浏览（多产品）| slide滑动 (多产品)|click点击(收藏|点赞|分享)'
-用户ID：(在一些场景下，平台会为用户构造的唯一编号)
-	userID
-所属设备号(app端的手机设备号)：
-	userDevice
-设备类型：
-	userDeviceType: '1 android| 2 ios | 9 其他'
-操作系统：
-	os
-手机制造商：
-	manufacturer
-电信运营商：
-	carrier
-网络类型：
-	networkType
-所在区域：
-	userRegion
-所在区域IP:
-	userRegionIP
-经度:
-	longitude
-纬度:
-	latitude
-停留时长：
-	duration
-扩展信息
-	exts	
-事件发生时间：
-	ct
+一 数据来源及采集
+	1  埋点数据： 
+	   由前端(js或手机终端)发送后台微服务相关埋点数据
+	2  业务相关数据：
+       (1) 高并发复杂业务场景下原数据同步处理方式改进为异步消息处理方式
+       (2) 变更日志数据(如mysql的binlog)
+    3  外部接口数据：
+       (1) 高并发复杂业务场景下高并发场景下原数据同步处理方式改进为异步消息处理方式
+   上述是大部分平台都会使用的数据来源，接下来就是可能由采集框架(flume或logstash等)或微服务后台充当消息生产者进行消息生产(producer)    
+
+
+二 消息通道
+	(1) 基于kafka的消息通道用于消息生产端与消费端间的系统解耦
+	(2) 基于kafka的消息通道用于改进高并发场景下的数据处理效率(同步方式->异步方式)
+
+
+三 实时计算
+	Flink提供了实时场景下数据ETL、各种统计方式(包括触发方式)、规则报警等技术支持，并提供批数据处理、图计算、机器学习等功能，成为一个综合技术栈。此外还可以结合其他框架(存储、搜索、多维分析、交互查询等)共同打造大数据平台。
+	Kylin做为多维分析计算框架也会被应用于实时场景，但这跟行业及企业需求有关。
 	
-注释：
-热门目的地：(***只有页面浏览日志中出现***)
-	hotTarget
+
+四 数据存储
+	简单来说，不论离线还是实时场景一般数据可分为明细数据和统计数据。实时场景下数据处理完成后如何被数据使用方使用或者提供数据使用方哪些数据使用功能呢？
+	明细数据： 数据使用方查询或搜索使用(尤其是重要的业务数据)，这样就需要像ES类似的搜索框架，当然如果是查询需求还可以使用Druid这类时序库来查询数据或做二次加工分析，或者Clickhouse
+	统计数据： 统计数据一般级量较小(除非是高基维分组统计)一般是结合BI可视化进行实时展示的(像ES、Druid都提供明细或聚合数据的高效的读写功能)，另外部分场景可能被写入缓存中供其他系统调用(如Redis)
+		
+		
+五 数据展示：
+	实时展示： Grafana
+		
 ```
 
 
 
-扩展信息说明
-
-```
-请参考本文档中上面 [用户行为日志 -> 行为事件说明]
-```
-
-
-
-
-
-### 第三节 维度数据
-
-#### 地区维度
-
-```
-地区编码：
-	region_code
-地区描述：
-	region_code_desc
-地区隶属城市：
-	region_city
-地区城市描述：
-	region_city_desc
-地区隶属省：
-	region_province
-地区省描述：
-	region_province_desc
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists dim_travel.dim_region (
- region_code string COMMENT '地区编码 如110105  | 130406 ',
- region_code_desc string COMMENT '地区编码 如朝阳区 | 峰峰矿区',
- region_city string COMMENT '地区编码 如1101 北京市朝阳区 | 1304 邯郸',
- region_city_desc string COMMENT '地区编码 如1101 | 1304 邯郸市',
- region_province string COMMENT '地区编码 如11 北京市 | 13 河北省',
- region_province_desc string COMMENT '地区编码 如 北京市 | 河北'
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n'
-location '/data/travel/dim/dim_region/'
-```
-
-
-
-#### 景区维度
-
-```
-景区名称：
-	scenic_name
-景区地区：
-	scenic_area
-景区地址：
-	scenic_address
-景区类型:
-	scenic_type 文化古迹、自然风光等
-景区级别：
-	scenic_level 5A景区
-景区特色：
-	scenic_tag 世界第八大奇迹
-
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists dim_travel.dim_scenic (
- scenic_name string COMMENT '景区名称',
- scenic_area string COMMENT '景区地区',
- scenic_address string COMMENT '景区地址',
- scenic_type string COMMENT '景区类型',
- scenic_level string COMMENT '景区级别',
- scenic_tag string COMMENT '景区特色'
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n'
-location '/data/qf/travel/dim/dim_scenic/'
-```
-
-
-
-#### 店铺维度
-
-```
-店铺ID：
-	shop_id
-店铺名称
-	shop_name
-店铺地区
-	shop_address
-店铺供应商：
-	supplier_name
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists dim_travel.dim_shop (
- shop_id string COMMENT '店铺ID',
- shop_name string COMMENT '店铺名称',
- shop_address string COMMENT '店铺地址',
- supplier_name string COMMENT '店铺供应商'
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n'
-location '/data/travel/dim/dim_shop/'
-```
-
-
-
-
-
-#### 产品相关维度
-
-```
-旅游产品编号：
-	product_Id: "598459284410"
-旅游产品标题：
-	product_title: "VIP15人小团张家界旅游4天3晚森林公园玻璃桥天门山芙蓉镇凤凰"
-旅游产品钻级：
-	product_level: 1-5星级
-行程天数：
-	travel_days: 3天
-产品类型：	
-	travel_type: 自助游,跟团游、私家团、半自助游
-游玩路线：
-	travel_line_subjects: "[\"张家界\",\"湘西\",\"永定区\",\"武陵源区\",\"慈利县\",\"凤凰县\"]"
-住宿信息：	
-	travel_lodging_info: "[{\"star\":\"5\",\"grade\":\"豪华型\",\"name\":\"大成山水度假酒店、新天地华天精选酒店、凤天国际酒店 五星级\"},{\"star\":\"5\",\"grade\":\"豪华型\",\"name\":\"新天地华天精选酒店、凤天国际酒店 五星级\"},{\"star\":\"5\",\"grade\":\"豪华型\",\"name\":\"纬地富蓝特酒店、盘龙山庄酒店、传奇凤凰酒店 豪华\"},{\"star\":\"5\",\"grade\":\"豪华型\",\"name\":\"盘龙山庄酒店、传奇凤凰酒店 豪华\"}]"
-
-旅游产品价格：
-	product_price: 1999
-出发地：
-	 departure: "张家界"
-目的地：
-     des_out: "湖南省"
-     des_city: "目的地城市：张家界"
-目的地类型：
-	 des_sight: 景点地址，若景点地址为-1，则为省份，国外：景点地址，若景点地址为-1，则为国家名称
-目的地经济分区：
-	 economic_division_out:"中部地区"
-是否境内外：
-	toursim_tickets_type: 03001:境内旅游、03002:出境旅游（含港澳台）
-首次到达：
-	first_arriving:"张家界"
-产品标签：
-	product_tag:特卖汇、优选、温泉体验
-产品卖点：
-	product_hot:湖南·跟团游」人气产品
-		★ 【贴心赠送】678盛夏钜惠【两成人下单立减200元】-赠成人出行礼【山顶小缆车+热景芙蓉镇】
-		★ 【五星精选】指定一晚碧桂园【4成人可升级独栋别墅】+一晚凤凰临江5钻客栈【古城内】
-		★ 【优选行程】16人超V团-8小时畅玩天门山深度体验湘西之魂-夜宿当地古朴小镇-赏山顶日出
-	
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists dim_travel.dim_product (
- product_id string COMMENT '旅游产品编号',
- product_title string COMMENT '旅游产品标题',
- product_level int COMMENT '旅游产品钻级',
- product_type string COMMENT '旅游产品类型(周末游、跟团游、自由行、私家团、游轮)',  
- product_type_desc string COMMENT '旅游产品类型描述',    
- travel_day string COMMENT '旅游行程天数',
- travel_line_subjects string COMMENT '旅游路线',   
- travel_lodging_info string COMMENT '住宿信息',
- product_price string COMMENT '旅游产品价格',   
- departure string COMMENT '出发地',
- departure_code string COMMENT '出发地编码',   
- first_arriving string COMMENT '首次到达城市',
- first_arriving_code string COMMENT '首次到达城市代码',
- des_out string COMMENT '目的地',
- des_city string COMMENT '目的地城市',  
- des_city_desc string COMMENT '目的地代码',
- toursim_tickets_type string COMMENT '是否境内外(03001:境内旅游、03002:出境旅游（含港澳台）)', 
- product_hot string COMMENT '产品卖点',
- shop_id string COMMENT '店铺ID'
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n'
-location '/data/travel/dim/dim_product/'
-```
-
-
-
-
-
-#### 产品扩展信息
-
-```
-旅游产品编号：
-	product_Id: "598459284410"
-产品扩展：
-	包含餐饮：
-		has_repast
-	是否购物：
-		has_shopping
-	附加景点活动：
-		scenic_adds
-		附加的景点列表：例如三亚旅游：亚龙湾、千古情景区、南山文化旅游区、南山寺...
-	途中交通：
-		travel_traffic
-		乘坐酒店接驳车前往迪士尼乐园【约15分钟一班】。
-		行驶：约2公里/约15分钟
-	备注:
-		travel_remark
-		备注：直飞张家界【自营旗舰全景16人超V团】宿【山顶小镇赏日出+4成人下单升碧桂园独栋别墅+凤凰城内临江5钻客栈】玩【7457米高山索道+365米户外电梯+景区VIP通道】交通自选
-
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists dim_travel.dim_pub_product_add (
- product_id string COMMENT '旅游产品编号',
- has_repast string COMMENT '包含餐饮',
- has_shopping string COMMENT '是否购物',   
- scenic_adds string COMMENT '附加景点活动',
- travel_traffic string COMMENT '途中交通',   
- travel_remark string COMMENT '备注说明'
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n'
-location '/data/qf/travel/dim/dim_pub_product_add/'
-```
-
-
-
-#### 酒店相关维度
-
-```
-酒店编号：
-	pub_id
-酒店名称：
-	pub_name
-酒店星级：
-	pub_star
-酒店级别：
-	pub_grade
-酒店级别描述：经济型、中端型、高端型
-	pub_grade_desc
-是否国内：
-	is_national
-酒店地区：
-	pub_area_code
-酒店地址：
-	pub_address
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists dim_travel.dim_pub (
- pub_id string COMMENT '酒店编号',
- pub_name string COMMENT '酒店名称',  
- pub_star int COMMENT '酒店星级',
- pub_grade_desc string COMMENT '酒店级别描述',
- pub_grade string COMMENT '酒店级别',
- pub_area_code string COMMENT '酒店地区',
- pub_address string COMMENT '酒店地址', 
- is_national string COMMENT '是否国内'
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n'
-location '/data/qf/travel/dim/dim_pub/'
-```
-
-
-
-#### 交通维度
-
-```
-出行方式：
-	traffic_type 飞机、火车、游轮、汽车
-车次航班：
-	traffic_number
-	飞机： 首都航空JD5379
-	火车： G181
-	游船： 渤海翠珠号
-	
-所属运营商
-	traffic_operator
-	飞机： 首都航空
-	火车： 中国铁路
-	游船： 渤海翠珠号
-出发所在城市：
-	traffic_area_source 北京
-出发位置：
-	traffic_source 北京南站
-目的地所在城市：
-	traffic_area_target 青岛
-抵达位置：
-	traffic_target 青岛站
-乘坐级别：
-	traffic_seat_level 商务|一等|二等
-价格：
-	traffic_price 314
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists dim_travel.dim_pub_traffic (
- traffic_type string COMMENT '出行方式',
- traffic_number string COMMENT '车次航班',
- traffic_operator string COMMENT '所属运营商',   
- traffic_area_source string COMMENT '出发所在城市',
- traffic_source string COMMENT '出发位置',
- traffic_area_target string COMMENT '目的地所在城市',
- traffic_target string COMMENT '抵达位置',
- traffic_seat_level int COMMENT '乘坐级别',  
- traffic_price int COMMENT '价格'
-)
-ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
-LINES TERMINATED BY '\n'
-location '/data/qf/travel/dim/dim_pub_traffic/'
-```
-
-
-
-### 第四节 中间数据
-
-#### 产品评价等级
-
-##### 数据schema
-
-```
-产品ID:
-	product_id
-综合评分：
-	common_score
-评论时间：
-	common_ct
-好评数:
-	good_count
-中评数：
-	general_count
-差评数：
-	poor_count
-```
-
-
-
-##### 数据表
-
-```sql
-create external table if not exists mid_travel.mid_travel_product_common (
- product_id string COMMENT '旅游产品编号',
- common_score double COMMENT '综合评分',
- good_count bigint COMMENT '好评数',
- general_count bigint COMMENT '中评数',
- poor_count bigint COMMENT '差评数',
- common_ct bigint COMMENT '评论时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/mid/mid_travel_product_common/'
-```
-
-
-
-#### 酒店评价
-
-```
-酒店ID:
-	pub_id
-综合评分：
-	common_score
-评论时间：
-	common_ct
-好评数:
-	good_count
-中评数：
-	general_count
-差评数：
-	poor_count
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists mid_travel.mid_travel_pub_common (
- pub_id string COMMENT '酒店编号',
- common_score double COMMENT '综合评分',
- good_count bigint COMMENT '好评数',
- general_count bigint COMMENT '中评数',
- poor_count bigint COMMENT '差评数',
- common_ct bigint COMMENT '评论时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/mid/mid_travel_pub_common/'
-```
-
-
-
-#### 景区评价
-
-```
-景区ID:
-	scenic_id
-综合评分：
-	common_score
-评论时间：
-	common_ct
-好评数:
-	good_count
-中评数：
-	general_count
-差评数：
-	poor_count
-```
-
-
-
-数据表
-
-```sql
-create external table if not exists mid_travel.mid_travel_scenic_common (
- scenic_id string COMMENT '景区编号',
- common_score double COMMENT '综合评分',
- good_count bigint COMMENT '好评数',
- general_count bigint COMMENT '中评数',
- poor_count bigint COMMENT '差评数',
- common_ct bigint COMMENT '评论时间'
-) partitioned by (bdp_day string)
-stored as parquet
-location '/data/qf/travel/mid/mid_travel_scenic_common/'
-```
-
-
-
-## 第四章 项目开发
+## 第七章 项目开发
 
 ### 第一节 开发准备工作
 
@@ -1679,9 +892,10 @@ location '/data/qf/travel/mid/mid_travel_scenic_common/'
 #### 背景说明
 
 ```
-Flink作为计算框架必然会涉及其他资源型框架的读写工作，如存储框架Hadoop、HBase，消息通道Kafka等，当然kafka所能连接的框架还有很多，大部分第三方的连接源称为connector，按照输入或输出位置分为了source和sink，下面我们列举了在实时场景下常用的几种source。
+Flink作为计算框架必然会涉及其他资源型框架的读写工作，如存储框架Hadoop、HBase，消息通道Kafka等，当然kafka所能连接的框架还有很多，大部分第三方的连接源称为connector，按照输入或输出位置分为了source和sink，下面我们列举了在实时场景下常用的几种source或sink。
 1 kafka消息通道
 2 jdbc数据源
+3 redis缓存
 ```
 
 
@@ -1935,6 +1149,130 @@ jdbc.url=jdbc:mysql://10.0.88.242:3306/travel?serverTimezone=UTC&characterEncodi
 ```
 
 
+
+#### redis配置参数
+
+配置文件：【scr/resource/redis/redis.properties】
+
+```properties
+#redis服务器ip
+redis_host=node11
+
+#redis服务端口
+redis_port=6379
+
+#redis验证密码(如果有)
+redis_password=qfqf
+
+#redis操作超时
+redis_timeout=10000
+
+#redis所选库
+redis_db=1
+
+#redis最大等待连接中的数量
+redis_maxidle=10
+
+#redis最小等待连接中的数量
+redis_minidle=2
+
+#redis最大数据库连接数
+redis_maxtotal=20
+```
+
+
+
+Redis-Flink写入数据
+
+创建redis连接参数(FlinkHelper)
+
+```scala
+/**
+ * redis连接参数(单点)
+*/
+def createRedisConfig() : FlinkJedisConfigBase = {
+
+//redis配置文件
+val redisProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.REDIS_CONF_PATH)
+
+//redis连接参数
+val redisDB :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_DB).toInt
+val redisMaxIdle :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MAXIDLE).toInt
+val redisMinIdle:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MINIDLE).toInt
+val redisMaxTotal:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MAXTOTAL).toInt
+val redisHost:String = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_HOST)
+val redisPassword:String = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_PASSWORD)
+val redisPort:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_PORT).toInt
+val redisTimeout:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_TIMEOUT).toInt
+
+//redis配置对象构造
+new FlinkJedisPoolConfig.Builder()
+      .setHost(redisHost)
+      .setPort(redisPort)
+      .setPassword(redisPassword)
+      .setTimeout(redisTimeout)
+      .setDatabase(redisDB)
+      .setMaxIdle(redisMaxIdle)
+      .setMinIdle(redisMinIdle)
+      .setMaxTotal(redisMaxTotal)
+      .build
+  }
+```
+
+
+
+RedisMapper接口实现
+
+```scala
+/**
+  * 自定义实现redis sink的RedisMapper接口
+  * 订单聚合结果输出redis
+  * @param redisCommand
+  */
+class QRedisSetMapper() extends RedisMapper[QKVBase]{
+
+  /**
+    * redis 操作命令
+    * @return
+    */
+  override def getCommandDescription: RedisCommandDescription = {
+    new RedisCommandDescription(RedisCommand.SET, null)
+  }
+
+  /**
+    * redis key键
+    * @param data
+    * @return
+    */
+  override def getKeyFromData(data: QKVBase): String = {
+    data.key
+  }
+
+  /**
+    * redis value
+    * @param data
+    * @return
+    */
+  override def getValueFromData(data: QKVBase): String = {
+      data.value
+  }
+}
+```
+
+
+
+写入redis数据
+
+```scala
+/**
+ * 写入下游环节缓存redis(被其他系统调用)
+ */
+val ds : DataStream[T] = ... 
+val redisMapper = new QRedisSetMapper()
+val redisConf = FlinkHelper.createRedisConfig()
+val redisSink = new RedisSink(redisConf, redisMapper)
+ds.addSink(redisSink)
+```
 
 
 
@@ -3057,17 +2395,20 @@ val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(orderDeta
 
 
 
-### 第七节 实时明细输出
+### 第七节 实时输出
 
 #### 背景说明
 
 ```
 我们之前说过，对于在高并发或需要处理的业务逻辑较复杂的情况下，对于实时场景的数据计算处理性能产生一定影响，另外如果使用方需求查询实时明细数据或是其他的分组聚合方式，我们都是统计结果输出如何满足需求呢。所以在一些场景下需要我们将实时数据保存起来，当然是经过ETL之后的干净数据。
-在实时场景下保存数据又可能会被使用方查询，那么选择时序库是比较好的方案，比如ES和 apache druid(当然druid并不是由Flink直接写入数据，而是通过将数据发送到kafka由druid作为数据源摄取)，这样在Flink的sink端我们介绍下这2种sink，另外作为聚合数据也可以输出到kafka或es之中。项目中根据不同业务需求会有很多类似的开发代码，下面示例仅仅作为展示示例，更多示例请参考项目代码，分别展示了输出数据到kafka和es
+在实时场景下保存数据又可能会被使用方查询，那么选择时序库是比较好的方案，比如ES和 apache druid(当然druid并不是由Flink直接写入数据，而是通过将数据发送到kafka由druid作为数据源摄取)，这样在Flink的sink端我们介绍下这几种sink，另外作为聚合数据也可以输出到kafka、es、redis之中。项目中根据不同业务需求会有很多类似的开发代码，下面示例仅仅作为展示示例，更多示例请参考项目代码，分别展示了输出数据到kafka和es
 1 自定义sink(ES)  
 2 输出到kafka，也就是kafka producer
+3 输出到redis
 
-注释：参考com.qf.bigdata.realtime.flink.streaming.etl.ods.UserLogsViewHandler,里面分别列举了以上2种sink。
+注释：
+1 参考com.qf.bigdata.realtime.flink.streaming.etl.ods.UserLogsViewHandler分别列举了以上2种sink(kafka,es)。
+2 参考com.qf.bigdata.realtime.flink.streaming.agg.orders.OrdersAggCacheHandler将统计结果输出到redis
 ```
 
 
@@ -3075,8 +2416,6 @@ val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(orderDeta
 #### 业务背景
 
 ##### 用户行为日志之页面浏览数据
-
-
 
 创建页面浏览数据流
 
@@ -3404,8 +2743,8 @@ viewDStream.addSink(viewKafkaProducer)
   基于时间的滚动窗口(TumblingEventTimeWindows)统计，如每N分钟统计结果
 
 3 数据输出
-  如果结果要实时展示，那么可以结合grafana做展示，那么输出数据要输出到es、druid之中，当然它们也支持客户端交互式查询需求并有较好的性能。
-  如果要高效的交互式查询，除了上面2种方案，也可以输出到clickhouse
+  如果结果要实时展示，那么可以结合grafana做展示，那么输出数据要输出到es、druid、redis之中，当然它们也支持客户端交互式查询需求并有较好的性能。
+  如果要高效的交互式查询，除了上面几种方案，也可以输出到clickhouse
 ```
 
 
@@ -3519,6 +2858,114 @@ aggDStream.print("order.aggDStream  ---:")
     }
   }
 ```
+
+
+
+###### 其他Sink选择
+
+窗口统计结果输出redis
+
+备注：
+
+为了不对OrdersDetailAggHandler里的代码产生过多的混乱性，单独写了一个redis sink的类OrdersAggCacheHandler（具体代码参考：com.qf.bigdata.realtime.flink.streaming.agg.orders.OrdersAggCacheHandler）
+
+
+
+redis连接参数
+
+```scala
+/**
+ * redis连接参数(单点)
+ */
+def createRedisConfig() : FlinkJedisConfigBase = {
+
+//redis配置文件
+val redisProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.REDIS_CONF_PATH)
+
+//redis连接参数
+val redisDB :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_DB).toInt
+val redisMaxIdle :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MAXIDLE).toInt
+val redisMinIdle:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MINIDLE).toInt
+val redisMaxTotal:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MAXTOTAL).toInt
+val redisHost:String = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_HOST)
+val redisPassword:String = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_PASSWORD)
+val redisPort:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_PORT).toInt
+val redisTimeout:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_TIMEOUT).toInt
+
+//redis配置对象构造
+new FlinkJedisPoolConfig.Builder()
+      .setHost(redisHost)
+      .setPort(redisPort)
+      .setPassword(redisPassword)
+      .setTimeout(redisTimeout)
+      .setDatabase(redisDB)
+      .setMaxIdle(redisMaxIdle)
+      .setMinIdle(redisMinIdle)
+      .setMaxTotal(redisMaxTotal)
+      .build
+  }
+```
+
+
+
+RedisMapper接口实现
+
+```scala
+/**
+  * 自定义实现redis sink的RedisMapper接口
+  * 订单聚合结果输出redis
+  * @param redisCommand
+  */
+class QRedisSetMapper() extends RedisMapper[QKVBase]{
+
+  /**
+    * redis 操作命令
+    * @return
+    */
+  override def getCommandDescription: RedisCommandDescription = {
+    new RedisCommandDescription(RedisCommand.SET, null)
+  }
+
+  /**
+    * redis key键
+    * @param data
+    * @return
+    */
+  override def getKeyFromData(data: QKVBase): String = {
+    data.key
+  }
+
+  /**
+    * redis value
+    * @param data
+    * @return
+    */
+  override def getValueFromData(data: QKVBase): String = {
+      data.value
+  }
+}
+```
+
+
+
+写入redis数据
+
+```scala
+//订单统计结果(QKVBase为kv结构，使用Tuple也可)
+val aggDStream:DataStream[QKVBase] = ...
+
+/**
+ * 4 写入下游环节缓存redis(被其他系统调用)
+ */
+val redisMapper = new QRedisSetMapper()
+val redisConf = FlinkHelper.createRedisConfig()
+val redisSink = new RedisSink(redisConf, redisMapper)
+aggDStream.addSink(redisSink)
+```
+
+
+
+
 
 
 
@@ -4552,28 +3999,62 @@ val hdfsSink: StreamingFileSink[String] = StreamingFileSink
 
 
 
+## 附录：
+
+1 大数据全栈主要技术说明
+
+```
+一 数据采集
+	1  埋点数据： 
+		   由微服务后台以发送消息形式采集各种埋点数据
+		   Flume日志采集
+	2  业务数据： 
+		   (1) 基于MYSQL的binlog日志
+		   (2) 由微服务后台以消息形式发送
+    3  外部接口数据：
+    		由微服务后台进行相关处理保存在关系型数据库中或以消息形式发送(为了流量削峰)
+
+二 数据通道
+		考虑到高并发下的数据级量采用分布式消息队列 Kafka
+
+三 数据计算
+		离线： Spark
+		实时： Flink
+		交互式查询：
+			(1) 实时明细 Druid
+			(2) 实时聚合 Druid | Redis
+			(3) 实时明细搜索 ES
+			(4) 通用型 ClickHouse | Presto
+			(5) 离线指标 Hive（数仓的集市数据或在此基础上的二次加工）
+			(6) 离线或实时的多维分析结果 Kylin
+			
+四 任务调度
+		Azkaban | airflow
+		
+
+五 数据存储
+		离线： Hive | HBase | ES
+		实时：	Druid | ES
+		关联关系： Neo4j | JanusGraph
+		
+六 数据展示：
+		离线展示： echars | apache superset
+		实时展示： Grafana
+```
 
 
 
+2 旅游行业相关数据
+
+```
+1 携程数据分析
+https://www.afenxi.com/24468.html
+
+2 携程实时用户数据采集与分析
+https://blog.csdn.net/imgxr/article/details/80129726
+
+3 旅游研究院&携程大数据报告
+http://www.ctaweb.org/html/2018-6/2018-6-29-9-4-22023.html
+```
 
 
-
-附录：
-
-1 旅游研究院&携程大数据报告 <http://www.ctaweb.org/html/2018-6/2018-6-29-9-4-22023.html>
-
-2 旅游大数据
-
-<http://www.1000fun.com/productpage/5>
-
-3 阿里云智能旅游解决方案
-
-<http://www.qingtaibj.com/travel.jsp>
-
-4 携程数据分析
-
-<https://www.afenxi.com/24468.html>
-
-5 携程实时用户数据采集与分析
-
-<https://blog.csdn.net/imgxr/article/details/80129726>

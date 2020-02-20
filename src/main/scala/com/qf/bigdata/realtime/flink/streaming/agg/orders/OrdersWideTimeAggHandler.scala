@@ -33,7 +33,7 @@ object OrdersWideTimeAggHandler {
   val logger :Logger = LoggerFactory.getLogger("OrdersWideTimeAggHandler")
 
   /**
-    * 旅游产品订单数据实时ETL
+    * 旅游产品订单数据实时统计
     * @param appName 程序名称
     * @param fromTopic 数据源输入 kafka topic
     * @param groupID 消费组id
@@ -120,7 +120,7 @@ object OrdersWideTimeAggHandler {
 
       //加入kafka摄入时间
       travelKafkaProducer.setWriteTimestampToKafka(true)
-      //aggDStream.addSink(travelKafkaProducer)
+      aggDStream.addSink(travelKafkaProducer)
 
       env.execute(appName)
     }catch {

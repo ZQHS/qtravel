@@ -6,9 +6,8 @@ import com.qf.bigdata.realtime.constant.TravelConstant
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.streaming.assigner.OrdersPeriodicAssigner
 import com.qf.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun.OrderDetailDataMapFun
-import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderDetailData, QBase}
+import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderDetailData, OrderDetailTimeAggDimMeaData, QBase, UserLogPageViewData}
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDimDO.ProductDimDO
-import com.qf.bigdata.realtime.flink.streaming.rdo.typeinformation.QRealTimeDimTypeInformations
 import com.qf.bigdata.realtime.flink.util.es.ESConfigUtil
 import com.qf.bigdata.realtime.flink.util.es.ESConfigUtil.ESConfigHttpHost
 import com.qf.bigdata.realtime.util.PropertyUtil
@@ -24,10 +23,10 @@ import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironm
 import org.apache.flink.types.Row
 import org.slf4j.{Logger, LoggerFactory}
 import org.apache.flink.api.scala._
-import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.config.StartupMode
+import org.apache.flink.streaming.connectors.redis.common.config.{FlinkJedisConfigBase, FlinkJedisPoolConfig}
 
 /**
   * Flink辅助工具类
@@ -322,6 +321,38 @@ object FlinkHelper {
     }
 
     orderDetailDStream
+  }
+
+
+  /**
+    * redis连接参数(单点)
+    */
+  def createRedisConfig() : FlinkJedisConfigBase = {
+
+    //redis配置文件
+    val redisProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.REDIS_CONF_PATH)
+
+    //redis连接参数
+    val redisDB :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_DB).toInt
+    val redisMaxIdle :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MAXIDLE).toInt
+    val redisMinIdle:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MINIDLE).toInt
+    val redisMaxTotal:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MAXTOTAL).toInt
+    val redisHost:String = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_HOST)
+    val redisPassword:String = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_PASSWORD)
+    val redisPort:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_PORT).toInt
+    val redisTimeout:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_TIMEOUT).toInt
+
+    //redis配置对象构造
+    new FlinkJedisPoolConfig.Builder()
+      .setHost(redisHost)
+      .setPort(redisPort)
+      .setPassword(redisPassword)
+      .setTimeout(redisTimeout)
+      .setDatabase(redisDB)
+      .setMaxIdle(redisMaxIdle)
+      .setMinIdle(redisMinIdle)
+      .setMaxTotal(redisMaxTotal)
+      .build
   }
 
 

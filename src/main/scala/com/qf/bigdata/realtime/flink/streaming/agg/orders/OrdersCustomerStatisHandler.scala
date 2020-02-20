@@ -120,7 +120,7 @@ object OrdersCustomerStatisHandler {
         }
       )
       val orderAggESSink = new CommonESSink(indexName)
-      //esDStream.addSink(orderAggESSink)
+      esDStream.addSink(orderAggESSink)
 
       env.execute(appName)
     }catch {

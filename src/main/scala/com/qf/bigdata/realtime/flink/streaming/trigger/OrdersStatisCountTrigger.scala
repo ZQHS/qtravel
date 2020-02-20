@@ -39,7 +39,7 @@ class OrdersStatisCountTrigger(maxCount:Long) extends Trigger[OrderDetailData, T
     ordersCountState = ctx.getPartitionedState(ordersCountStateDesc)
 
     //当前数据
-    if(ordersCountState.value() == null){
+    if(ordersCountState.value() == 0){
         ordersCountState.update(QRealTimeConstant.COMMON_NUMBER_ZERO)
     }
     val curOrders = ordersCountState.value() + 1
