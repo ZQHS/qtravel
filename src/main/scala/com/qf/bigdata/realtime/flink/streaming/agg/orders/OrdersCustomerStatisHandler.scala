@@ -113,7 +113,7 @@ object OrdersCustomerStatisHandler {
         */
       val esDStream:DataStream[String] = statisDStream.map(
         (value : OrderWideCustomerStatisData) => {
-          val result :mutable.Map[String,AnyRef] = JsonUtil.gObject2Map(value)
+          val result :java.util.Map[String,Object] = JsonUtil.gObject2Map(value)
           val eid = value.productType+CommonConstant.BOTTOM_LINE+value.toursimType
           result +=(QRealTimeConstant.KEY_ES_ID -> eid)
           JsonUtil.gObject2Json(result)

@@ -359,6 +359,7 @@
             <scope>${scope}</scope>
         </dependency>
 
+        <!-- flik-redis -->
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-connector-redis_2.11</artifactId>

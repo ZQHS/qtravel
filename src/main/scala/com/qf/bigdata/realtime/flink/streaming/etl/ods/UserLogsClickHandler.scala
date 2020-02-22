@@ -106,7 +106,8 @@ object UserLogsClickHandler {
     val appName = "flink.UserLogsClickHandler"
 
     //kafka数据源topic
-    val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
+    //val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
+    val fromTopic = "test_logs"
 
     //kafka消费组
     val groupID = "group.UserLogsClickHandler"

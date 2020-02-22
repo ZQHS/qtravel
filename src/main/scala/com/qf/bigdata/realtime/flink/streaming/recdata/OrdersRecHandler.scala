@@ -153,12 +153,6 @@ object OrdersRecHandler {
       //4 数据实时采集落地
       //数据落地路径
       val outputPath :Path = new Path(output)
-      //      //落地大小阈值
-      //      val maxPartSize = 1024l * 1024l * maxSize
-      //      //落地时间间隔
-      //      val rolloverInl = TimeUnit.MINUTES.toMillis(rolloverInterval)
-      //      //无数据间隔时间
-      //      val inactivityInl = TimeUnit.MINUTES.toMillis(inactivityInterval)
       //分桶检查点时间间隔
       val bucketCheckInl = TimeUnit.SECONDS.toMillis(bucketCheckInterval)
 
@@ -216,7 +210,7 @@ object OrdersRecHandler {
 
 
     //实时处理落地
-    val output2 = "hdfs://node11:9000/qtravel/orders_column/"
+    val output2 = "hdfs://node11:9000/qtravel/orders_parquet/"
     handleHDFSJob(appName, groupID, fromTopic, output2, rolloverInterval, inactivityInterval, maxSize, bucketCheckInterval)
 
 

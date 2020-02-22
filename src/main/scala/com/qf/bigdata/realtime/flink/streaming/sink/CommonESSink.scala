@@ -119,10 +119,10 @@ class CommonESSink(indexName:String) extends RichSinkFunction[String] {
     }
 
     //转换为Map结构
-    val record :java.util.Map[String,String] = JsonUtil.json2object(value, classOf[java.util.Map[String,String]])
+    val record :java.util.Map[String,Object] = JsonUtil.gJson2Map(value)
 
     //索引id
-    val id = record.get(QRealTimeConstant.KEY_ES_ID)
+    val id = record.get(QRealTimeConstant.KEY_ES_ID).toString
     if(null == id){
       msg = "Travel.ESSink.id  is null"
     }

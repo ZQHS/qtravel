@@ -95,7 +95,7 @@ object OrdersStatisHandler {
         *   自定义ESSink输出
         */
       val orderWideDetailESSink = new CommonESSink(indexName)
-      //esDStream.addSink(orderWideDetailESSink)
+      esDStream.addSink(orderWideDetailESSink)
 
       env.execute(appName)
     }catch {
@@ -193,12 +193,13 @@ object OrdersStatisHandler {
     val groupID = "group.OrdersStatisHandler"
 
     //kafka数据消费topic
-    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    val fromTopic = "test_ods"
 
     //定量触发窗口计算
     val maxCount = 500
     val indexNameCount = "travel_orders_count_statis"
-    handleOrdersStatis4CountJob(appName, groupID, fromTopic, indexNameCount, maxCount)
+    //handleOrdersStatis4CountJob(appName, groupID, fromTopic, indexNameCount, maxCount)
 
     //定时触发窗口计算
     val maxInternal = 1

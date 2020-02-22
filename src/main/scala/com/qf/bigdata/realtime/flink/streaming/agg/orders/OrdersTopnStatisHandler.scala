@@ -120,17 +120,18 @@ object OrdersTopnStatisHandler {
     val appName = "qf.OrdersTopnStatisHandler"
 
     //kafka数据源topic
-    val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    val fromTopic = "test_ods"
 
     //统计结果输出
-    val toTopic = QRealTimeConstant.TOPIC_ORDER_DM_STATIS
+    //val toTopic = QRealTimeConstant.TOPIC_ORDER_DM_STATIS
+    val toTopic = "test_dm_statis"
 
     //kafka消费组
     val groupID = "group.OrdersTopnStatisHandler"
 
 
-    //定时时间间隔内触发窗口计算
-    val maxInternal = 1
+    //订单统计排名
     val topN = 3l
     handleOrdersWindowTopNJob(appName, groupID, fromTopic, toTopic, topN)
 

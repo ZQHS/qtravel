@@ -327,13 +327,17 @@ object FlinkHelper {
   /**
     * redis连接参数(单点)
     */
-  def createRedisConfig() : FlinkJedisConfigBase = {
+  def createRedisConfig(db:Int) : FlinkJedisConfigBase = {
 
     //redis配置文件
     val redisProperties :Properties = PropertyUtil.readProperties(QRealTimeConstant.REDIS_CONF_PATH)
 
     //redis连接参数
-    val redisDB :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_DB).toInt
+    var redisDB :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_DB).toInt
+    if(null != db){
+       redisDB = db
+    }
+
     val redisMaxIdle :Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MAXIDLE).toInt
     val redisMinIdle:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MINIDLE).toInt
     val redisMaxTotal:Int = redisProperties.getProperty(QRealTimeConstant.REDIS_CONF_MAXTOTAL).toInt

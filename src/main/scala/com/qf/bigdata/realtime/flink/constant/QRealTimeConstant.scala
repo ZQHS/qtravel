@@ -77,6 +77,7 @@ object QRealTimeConstant {
   val PARAMS_KEYS_TOPIC_TO = "to_topic"
 
   val PARAMS_KEYS_INDEX_NAME = "index"
+  val PARAMS_KEYS_REDIS_DB = "redis_db"
 
 
   //kafka参数
@@ -107,7 +108,7 @@ object QRealTimeConstant {
 
   val ES_INDEX_NAME_ORDER_DETAIL = "travel_order_detail"
   val ES_INDEX_NAME_ORDER_AGG = "travel_order_agg"
-  val ES_INDEX_NAME_ORDER_WIN_STATIS = "travel_order_win_statis"
+  val ES_INDEX_NAME_ORDER_STATIS = "travel_order_statis"
   val ES_INDEX_NAME_ORDER_CUSTOMER_STATIS = "travel_order_customer_statis"
 
   val ES_INDEX_NAME_ORDER_WIDE_DETAIL = "travel_order_wide"

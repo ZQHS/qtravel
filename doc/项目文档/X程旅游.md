@@ -138,7 +138,7 @@ Hadoop集群：
     - 基于用户行为日志数据为用户画像、用户群体画像、实时推荐提供底层数据支持
     - 基于访问日志进行反爬虫分析
 
-    - 基于平台产生的各类实时数据制作实时报表、构建实时数仓、构建实时关联关系(部分场景下考虑效率可能离线处理)
+    - 基于平台产生的各类实时数据制作实时报表、构建实时数仓、构建实时关联关系(考虑效率可能离线处理)
 
       
 
@@ -204,10 +204,10 @@ Hadoop集群：
 | ------------ | ---------------------------------------------------------- | ---- |
 | 实时数据ETL  | 实时数据清洗、去噪最终形成规范化数据                       | V1.0 |
 | 实时数据统计 | 实现各种实时统计指标                                       | V1.0 |
-| 实时数据存储 | 实时数据落地持久化为实时搜索、实时动态聚合提供技术支持     | V1.0 |
-| 实时规则     | 主要服务于实时风控、报警等相关需求                         | V1.0 |
+| 实时数据存储 | 实时数据落地持久化为交互式搜索、动态查询计算提供技术支持   | V1.0 |
+| 规则处理     | 主要服务于实时风控、报警等相关需求                         | V1.0 |
 | 交互式查询   | 交互式查询明细数据或实时聚合数据(Clickhouse、Apache Druid) | V2.0 |
-| 实时BI       | 主要服务于数据使用方，提供直观的展示形式                   | V2.0 |
+| 实时数据展示 | 主要服务于数据使用方，提供直观的展示形式                   | V2.0 |
 
 
 
@@ -2542,22 +2542,20 @@ class UserLogsViewESSink(indexName:String) extends RichSinkFunction[UserLogPageV
   override def invoke(value: UserLogPageViewData, context: SinkFunction.Context[_]): Unit = {
     try {
       //参数校验
-      val viewData = JsonUtil.object2json(value)
-      val checkResult: String = checkData(viewData)
+      val result :java.util.Map[String,Object] = JsonUtil.gObject2Map(value)
+      val checkResult: String = checkData(result)
       if (StringUtils.isNotBlank(checkResult)) {
         //日志记录
         logger.error("Travel.ESRecord.sink.checkData.err{}", checkResult)
         return
       }
 
-      //记录信息
-      val record :java.util.Map[String,String] = JsonUtil.json2object(viewData, classOf[java.util.Map[String,String]])
 
       //请求id
       val sid = value.sid
 
       //索引名称、类型名称
-      handleData(indexName, indexName, sid, record)
+      handleData(indexName, indexName, sid, result)
 
     }catch{
       case ex: Exception => logger.error(ex.getMessage)
@@ -2572,7 +2570,7 @@ class UserLogsViewESSink(indexName:String) extends RichSinkFunction[UserLogPageV
     * @param value
     */
   def handleData(idxName :String, idxTypeName :String, esID :String,
-                 value: java.util.Map[String,String]): Unit ={
+                 value: java.util.Map[String,Object]): Unit ={
     val indexRequest = new IndexRequest(idxName, idxName, esID).source(value)
     val response = transportClient.prepareUpdate(idxName, idxName, esID)
       .setRetryOnConflict(QRealTimeConstant.ES_RETRY_NUMBER)
@@ -2601,30 +2599,26 @@ class UserLogsViewESSink(indexName:String) extends RichSinkFunction[UserLogPageV
     * @param value
     * @return
     */
-  def checkData(value: String): String ={
+  def checkData(value :java.util.Map[String,Object]): String ={
     var msg = ""
     if(null == value){
       msg = "kafka.value is empty"
     }
 
-    //转换为Map结构
-    val record :java.util.Map[String,String] = JsonUtil.json2object(value, classOf[java.util.Map[String,String]])
-
-
     //行为类型
-    val action = record.get(QRealTimeConstant.KEY_ACTION)
+    val action = value.get(QRealTimeConstant.KEY_ACTION)
     if(null == action){
       msg = "Travel.ESSink.action  is null"
     }
 
     //行为类型
-    val eventTyoe = record.get(QRealTimeConstant.KEY_EVENT_TYPE)
+    val eventTyoe = value.get(QRealTimeConstant.KEY_EVENT_TYPE)
     if(null == eventTyoe){
       msg = "Travel.ESSink.eventtype  is null"
     }
 
     //时间
-    val ctNode = record.get(TravelConstant.CT)
+    val ctNode = value.get(TravelConstant.CT)
     if(null == ctNode){
       msg = "Travel.ESSink.ct is null"
     }

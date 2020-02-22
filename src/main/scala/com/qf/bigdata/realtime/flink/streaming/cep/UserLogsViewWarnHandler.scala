@@ -89,7 +89,8 @@ object UserLogsViewWarnHandler {
           val durationTime = value.duration.toLong
           durationTime < minDuration || durationTime > maxDuration
         }
-      ).timesOrMore(times)//匹配规则次数
+      )
+        .timesOrMore(times)//匹配规则次数
       .consecutive() //连续匹配模式
 
     /**
@@ -113,7 +114,7 @@ object UserLogsViewWarnHandler {
 
     // 加入kafka摄入时间
     travelKafkaProducer.setWriteTimestampToKafka(true)
-    //viewDurationAlertDStream.addSink(travelKafkaProducer)
+    viewDurationAlertDStream.addSink(travelKafkaProducer)
 
     env.execute(appName)
   }
@@ -139,11 +140,12 @@ object UserLogsViewWarnHandler {
     val fromTopic = "test_logs"
 
     //告警输出通道
-    val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_LAUNCH_WARN
+    //val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_LAUNCH_WARN
+    val toTopic = "test_logs_warn"
 
     //规则涉及参数：
-    val timeRange :Int = 5 //报警设置的时间周期范围
-    val times :Int = 3     //报警设置的匹配次数
+    val timeRange :Int = 3 //报警设置的时间周期范围
+    val times :Int = 2     //报警设置的匹配次数
     val minDuration:Long = 5l //报警设置的匹配逻辑(规则：阈值下限，最小【停留时长】)
     val maxDuration:Long = 50l//规则设置的匹配逻辑(规则：阈值上限，最大【停留时长】)
 

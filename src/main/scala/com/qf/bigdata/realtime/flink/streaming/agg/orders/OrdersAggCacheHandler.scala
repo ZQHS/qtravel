@@ -30,7 +30,7 @@ object OrdersAggCacheHandler {
     * @param groupID 消费组id
     * @param indexName 数据流输出
     */
-  def handleOrders4RedisJob(appName:String, groupID:String, fromTopic:String):Unit = {
+  def handleOrders4RedisJob(appName:String, groupID:String, fromTopic:String, redisDB:Int):Unit = {
     try{
       /**
         * 1 Flink环境初始化
@@ -76,7 +76,7 @@ object OrdersAggCacheHandler {
         * 4 写入下游环节缓存redis(被其他系统调用)
         */
       val redisMapper = new QRedisSetMapper()
-      val redisConf = FlinkHelper.createRedisConfig()
+      val redisConf = FlinkHelper.createRedisConfig(redisDB)
       val redisSink = new RedisSink(redisConf, redisMapper)
       aggDStream.addSink(redisSink)
 
@@ -103,10 +103,14 @@ object OrdersAggCacheHandler {
     val groupID = "qf.OrdersAggCacheHandler"
 
     //kafka数据源topic
-    val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
+    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    val fromTopic = "test_ods"
+
+    //redis数据库
+    val redisDB = 9
 
     //1 聚合数据输出redis
-    handleOrders4RedisJob(appName, groupID, fromTopic)
+    handleOrders4RedisJob(appName, groupID, fromTopic, redisDB)
 
   }
 

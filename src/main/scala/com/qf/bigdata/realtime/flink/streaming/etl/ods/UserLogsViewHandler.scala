@@ -176,8 +176,8 @@ object UserLogsViewHandler {
     val groupID = "qf.UserLogsViewHandler"
 
     //kafka数据源topic
-    val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
-    //val fromTopic = "test_logs"
+    //val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
+    val fromTopic = "test_logs"
 
     //ETL后的明细日志数据输出kafka
     val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_VIEW
@@ -187,10 +187,10 @@ object UserLogsViewHandler {
     val indexName = QRealTimeConstant.ES_INDEX_NAME_LOG_VIEW
 
     //1 明细数据输出kafka
-    handleLogsETL4KafkaJob(appName, groupID, fromTopic, toTopic)
+    //handleLogsETL4KafkaJob(appName, groupID, fromTopic, toTopic)
 
     //2 明细数据输出es
-    //handleLogsETL4ESJob(appName, groupID, fromTopic, indexName)
+    handleLogsETL4ESJob(appName, groupID, fromTopic, indexName)
 
   }
 

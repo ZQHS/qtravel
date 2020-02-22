@@ -1,7 +1,5 @@
 package com.qf.bigdata.realtime.flink.streaming.sink.orders
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.qf.bigdata.realtime.constant.CommonConstant
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO.{OrderWideData}
 import com.qf.bigdata.realtime.flink.util.es.ES6ClientUtil
@@ -58,19 +56,21 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
         return
       }
 
-      //行为+事件类型+用户地区+手机制造商+电信运营商
-      val sep = CommonConstant.BOTTOM_LINE
-      val productType = value.productType
+      //用户地区
       val depCode = value.depCode
-      val triffic = value.traffic
-      //val id = depCode+sep+productType+sep+triffic
       val id = depCode
 
       //确定处理维度及度量
       val useFields :List[String] = getOrderWideAggUseFields()
       val sources :java.util.Map[String,Object] = JsonUtil.json2object(orderDataJson, classOf[java.util.Map[String,Object]])
+      //提取使用字段
       val record :java.util.Map[String,Object] = checkUseFields(sources, useFields)
 
+      val feeIntValue :Int = record.getOrDefault(QRealTimeConstant.POJO_FIELD_FEE,"").toString.toInt
+
+      //由于gson里将数字转为string，这里fee字段的增加需要转为数字类型
+      record.put(QRealTimeConstant.POJO_FIELD_FEE, java.lang.Integer.valueOf(feeIntValue))
+      record.put(QRealTimeConstant.POJO_FIELD_ORDERS, java.lang.Long.valueOf(QRealTimeConstant.COMMON_NUMBER_ONE))
 
       //将数据写入ES集群(使用ES局部更新功能累计度量数据)
       handleData(indexName, indexName, id, record)
@@ -96,21 +96,15 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
       params.put(k, v)
       var s = ""
       if(QRealTimeConstant.KEY_CT.equals(k)) {
-        s = "if(ctx._source."+k+" == null){ctx._source."+k+" = params."+k+"} else { if(ctx._source."+k+" < params."+k+" ){ctx._source."+k+" = params."+k+"}}"
+        //订单产生时间
+        s = "if(params."+k+" != null){ctx._source."+k+" = params."+k+"} "
       }else if(QRealTimeConstant.POJO_FIELD_FEE.equalsIgnoreCase(k)){
         //订单累计费用
-        s = " if(ctx._source."+k+" != null) {ctx._source."+k +"+= params." + k + "} else { ctx._source."+k+" = params."+k+"} "
-      }else if(QRealTimeConstant.POJO_FIELD_FEE_MAX.equalsIgnoreCase(k)){
-        //单笔订单费用最大值
-        s = " if(ctx._source."+k+" == null){ctx._source."+k+" = params."+k+"} else { if(ctx._source."+k+" < params."+k+" ){ctx._source."+k+" = params."+k+"}}"
-      }else if(QRealTimeConstant.POJO_FIELD_FEE_MIN.equalsIgnoreCase(k)){
-        //单笔订单费用最小值
-        s = " if(ctx._source."+k+" == null){ctx._source."+k+" = params."+k+"} else { if(ctx._source."+k+" > params."+k+" ){ctx._source."+k+" = params."+k+"}}"
-      }else if(QRealTimeConstant.POJO_FIELD_MEMBERS.equalsIgnoreCase(k)){
-        //订单累计出行人数
-        s = " if(ctx._source."+k+" != null) {ctx._source."+k +"+= params." + k + "} else { ctx._source."+k+" = params."+k+"} "
-      } else if(QRealTimeConstant.POJO_FIELD_ORDERS.equalsIgnoreCase(k)){
-        s = " if(ctx._source."+k+" != null) { ctx._source."+k+" = params."+k+" } "
+        val feeValue = v.toString.toInt
+        s = " if(ctx._source."+k+" != null){ctx._source."+k +" += " + feeValue + "} else { ctx._source."+k+" = "+feeValue+"} "
+      }else if(QRealTimeConstant.POJO_FIELD_ORDERS.equalsIgnoreCase(k)){
+        //订单PV
+        s = " if(ctx._source."+k+" == null){ctx._source."+k+" = 1 } else { ctx._source."+k+" += 1 }"
       }
       scriptSb.append(s)
     }
@@ -118,7 +112,8 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
     //执行脚本
     val scripts = scriptSb.toString()
     val script = new Script(ScriptType.INLINE, "painless", scripts, params)
-    //println(s"script=$script")
+    println(s"script=$script")
+    //logger.info(scripts)
 
     //ES执行插入或更新操作
     val indexRequest = new IndexRequest(idxName, idxTypeName, esID).source(params)
@@ -134,6 +129,8 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
     }
   }
 
+
+
   /**
     * 选择参与计算的维度和度量
     * @return
@@ -142,14 +139,12 @@ class OrdersWideAggESSink(indexName:String) extends RichSinkFunction[OrderWideDa
     var useFields :List[String] = List[String]()
     //useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_USERREGION)
     //useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_TRAFFIC)
-    useFields = useFields.:+(QRealTimeConstant.POJO_PRODUCT_DEPCODE)
+    //useFields = useFields.:+(QRealTimeConstant.POJO_PRODUCT_DEPCODE)
 
     useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_ORDERS)
-    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_MEMBERS)
-    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_FEE_MIN)
-    useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_FEE_MAX)
     useFields = useFields.:+(QRealTimeConstant.POJO_FIELD_FEE)
     useFields = useFields.:+(QRealTimeConstant.KEY_CT)
+
     useFields
   }
 

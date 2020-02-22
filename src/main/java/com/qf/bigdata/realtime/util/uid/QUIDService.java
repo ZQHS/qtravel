@@ -9,9 +9,9 @@ import java.io.Serializable;
 public class QUIDService implements Serializable {
 
     private final long twepoch = 1288834974657L;
-    private final long accessBits = 20L;
-    private final long userBits = 20L;
-    private final long durationBits = 20L;
+    private final long accessBits = 24L;
+    private final long userBits = 24L;
+    private final long durationBits = 24L;
     private final long maxAccessId = -1L ^ (-1L << accessBits);
     private final long maxUserId = -1L ^ (-1L << userBits);
     private final long maxDurationId = -1L ^ (-1L << durationBits);

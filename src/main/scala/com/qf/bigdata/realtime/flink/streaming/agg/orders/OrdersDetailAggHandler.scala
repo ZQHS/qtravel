@@ -63,7 +63,7 @@ object OrdersDetailAggHandler {
         .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE)))
         .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
         .aggregate(new OrderDetailTimeAggFun(), new OrderDetailTimeWindowFun())
-      aggDStream.print("order.aggDStream  ---:")
+
 
 
       /**
@@ -72,12 +72,14 @@ object OrdersDetailAggHandler {
         */
       val esDStream:DataStream[String] = aggDStream.map(
         (value : OrderDetailTimeAggDimMeaData) => {
-          val result :mutable.Map[String,AnyRef] = JsonUtil.gObject2Map(value)
+          val result :java.util.Map[String,Object] = JsonUtil.gObject2Map(value)
           val eid = value.userRegion+CommonConstant.BOTTOM_LINE+value.traffic
           result +=(QRealTimeConstant.KEY_ES_ID -> eid)
-          JsonUtil.gObject2Json(result)
+          val json = JsonUtil.gObject2Json(result)
+          json
         }
       )
+      esDStream.print("order.esDStream  ---:")
 
 
       /**
@@ -116,7 +118,7 @@ object OrdersDetailAggHandler {
     val fromTopic = "test_ods"
 
     //订单统计数据输出ES
-    val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_WIN_STATIS
+    val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_STATIS
 
 
     //实时处理第二层：开窗统计

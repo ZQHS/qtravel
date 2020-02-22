@@ -142,11 +142,11 @@ object OrdersWideTimeAggHandler {
     val appName = "qf.OrdersWideTimeAggHandler"
 
     //kafka消费组
-    val groupID = "group.OrdersWideTimeAggHandler2"
+    val groupID = "group.OrdersWideTimeAggHandler"
 
     //kafka数据消费topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "test_ods2"
+    val fromTopic = "test_ods"
 
     //val toTopic = QRealTimeConstant.TOPIC_ORDER_MID
     val toTopic = "test_mid"

@@ -109,12 +109,13 @@ object OrdersWideAgg2ESHandler {
         */
       val orderWideDStream :DataStream[OrderWideData] = orderDetailDStream.connect(dimProductBCStream)
         .process(new OrderWideBCFunction(QRealTimeConstant.BC_PRODUCT))
-      orderWideDStream.print("order.orderWideDStream---")
+      //orderWideDStream.print("order.orderWideDStream---")
 
 
       /**
         * 7 数据输出Sink
-        *   自定义ESSink输出(基于ES局部更新实现累加功能)
+        *   自定义ESSink输出
+        *   (基于ES局部更新实现累加功能)
         */
       val windowOrderESSink = new OrdersWideAggESSink(indexName)
       orderWideDStream.addSink(windowOrderESSink)
