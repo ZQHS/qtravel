@@ -4,7 +4,7 @@ import com.qf.bigdata.realtime.enumes.ActionEnum
 import com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qf.bigdata.realtime.flink.schema.{UserLogsKSchema, UserLogsPageViewKSchema}
 import com.qf.bigdata.realtime.flink.streaming.assigner.UserLogsAssigner
-import com.qf.bigdata.realtime.flink.streaming.funs.logs.UserLogsETLFun.UserLogPageViewDataMapFun
+import com.qf.bigdata.realtime.flink.streaming.funs.logs.UserLogsETLFun.{ UserLogPageViewDataMapFun}
 import com.qf.bigdata.realtime.flink.streaming.rdo.QRealTimeDO._
 import com.qf.bigdata.realtime.flink.streaming.sink.logs.UserLogsViewESSink
 import com.qf.bigdata.realtime.flink.util.help.FlinkHelper
@@ -163,6 +163,7 @@ object UserLogsViewHandler {
   }
 
 
+
   def main(args: Array[String]): Unit = {
     //参数处理
     //    val parameterTool = ParameterTool.fromArgs(args)
@@ -180,8 +181,8 @@ object UserLogsViewHandler {
     val fromTopic = "test_logs"
 
     //ETL后的明细日志数据输出kafka
-    val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_VIEW
-    //val toTopic = "test_logs_view"
+    //val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_VIEW
+    val toTopic = "test_logs_pageview"
 
     //日志数据输出ES(明细搜索或交互式查询)
     val indexName = QRealTimeConstant.ES_INDEX_NAME_LOG_VIEW
@@ -189,8 +190,9 @@ object UserLogsViewHandler {
     //1 明细数据输出kafka
     //handleLogsETL4KafkaJob(appName, groupID, fromTopic, toTopic)
 
+
     //2 明细数据输出es
-    handleLogsETL4ESJob(appName, groupID, fromTopic, indexName)
+    //handleLogsETL4ESJob(appName, groupID, fromTopic, indexName)
 
   }
 
