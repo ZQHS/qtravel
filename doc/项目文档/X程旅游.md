@@ -1,26 +1,4 @@
-基于flink实时旅游平台
-
-概要设计说明书
-
-作        者：千锋大数据团队
-
-完成日期：20200118
-
-签  收  人：千锋大数据团队
-
-签收日期：20190120
-
- 
-
-修改情况记录：
-
-| 版本号 | 修改批准人 | 修改人 | 安装日期 | 签收人 |
-| ------ | ---------- | ------ | -------- | ------ |
-| 1.0    |            |        | 20190115 |        |
-| 1.1    |            |        | 20200215 |        |
-|        |            |        |          |        |
-
-
+# 基于Flink实时旅游平台
 
 ## 第一章 课程计划
 
@@ -40,7 +18,7 @@
 
 ### 第一节 背景描述
 
-​		“旅游大数据”是指在旅游的“住行游购娱”六要素领域所产生的数量巨大、快速传播、类型多样相关（有结构和非结构的）、富有价值的数据集合，并且可以通过大数据技术（例如云计算、分布式存储、流运算、大数据算法、NoSQL数据库、SOA结构体系等）进行数据相关性分析和数据可视化，从而使游客消费者的决策更加有效便捷，提高满意度。
+​		“旅游大数据”是指在旅游的“吃住行游购娱”六要素领域所产生的数量巨大、快速传播、类型多样相关（有结构和非结构的）、富有价值的数据集合，并且可以通过大数据技术（例如云计算、分布式存储、流运算、大数据算法、NoSQL数据库、SOA结构体系等）进行数据相关性分析和数据可视化，从而使游客消费者的决策更加有效便捷，提高满意度。
 
 ​		随着大数据技术在各行各业的落地为企业和用户提供了真实有意义的帮助，但传统的离线计算也随着人们需要了解数据实时情况的迫切需求而导致问题日益突出，实时流式大数据分析正在成为人们新的关注点，旅游行业也不例外，企业也需了解用户的实时行为、尤其是异常动作，另外实时推荐也是越来越起到增加用户粘性、加强用户体验、改进运营方向的重点任务。
 
@@ -60,7 +38,7 @@
 
 - 用户数量：近亿级[2019年数据会有变化，但前几位基本在千万级别，另外携程与去哪儿合并]
 
-```
+```mathematica
 【携程】  亿级 
 【去哪儿】 亿级
 【飞猪】   千万级
@@ -70,9 +48,10 @@
 
 ​	活跃用户：千万级
 
-```
-【携程】  千万级(5588万) 
-【去哪儿】 千万级(4133万)
+```mathematica
+应用      月活            日活
+【携程】  千万级(5588万)  2500*0.25 + (5500-625)/30<===> 600+1600=2200
+【去哪儿】 千万级(4133万) 
 【飞猪】   千万级(2888万)
 【马蜂窝】 千万级(2294万)
 【途牛】   近千万级(944万)
@@ -82,7 +61,7 @@
 
 - 数据量级
 
-```
+```mathematica
 假设单条数据大小大约为1KB 
 1 业务数据总量： 业务数量 * 活跃用户 * 用户系数 * 业务行为数量
 
@@ -91,15 +70,16 @@
 用户行为数量= 4096W（活跃用户） * 1.5 (用户系数) * 1KB(单条数据大小) * 20(数据条) 【20 - 100范围】
           = 10000 * 1.5 * 4MK * 20 【20 - 100范围】
           = 1200GK
+          
 订单业务 = 4096W（活跃用户）* 0.01（订单百分比）* 1KB(单条数据大小)
-        = 10000 * 0.01 * 1MK
-        = 100GK
+        = 40960000 * 0.01 * 1k
+        = 409M
 酒店和车票业务相对于旅游订单属于高频业务（发生次数较多），尤其是日志数据
 
 3 总结：综合以上场景基本上日均数据量大约为TB级别
   注意：
 	(1) 由于企业知名度和用户认可度不同，再加上旅游行业与季节、时间关系密切，可能在局部时间范围内会出现高并发的海量数据，个别时间呈现极地的数据量，所以数据量只能是个估算值，只要接近企业的大概数据级别即可。
-    (2) 可使用网络公开的数据估算，如XX报告：每天TB级的增量数据，近百亿条的用户数据，上百万的产品数据     
+  (2) 可使用网络公开的数据估算，如XX报告：每天TB级的增量数据，近百亿条的用户数据，上百万的产品数据     
 ```
 
 ​	 
@@ -108,7 +88,7 @@
 
 - 集群规模(实时相关)
 
-```
+```mathematica
 Job数: 
 	30W+
 Hadoop集群：
@@ -223,11 +203,11 @@ Hadoop集群：
 
 ### 第三节 数据组成
 
-#### 事实数据
+#### 一、事实数据
 
-##### 旅游订单数据
+##### 1、旅游订单数据
 
-```
+```mathematica
 用户ID：(在一些场景下，平台会为用户构造的唯一编号)
 	userID
 用户手机号：
@@ -294,9 +274,7 @@ Hadoop集群：
 
 
 
-##### 用户行为日志
-
-
+##### 2、用户行为日志
 
 用户搜索行为
 
@@ -310,7 +288,7 @@ Hadoop集群：
 
 
 
-```
+```mathematica
 行为类型：
  	action： 'launch启动| interactive交互| page_enter页面曝光(产品页展示)',
 事件类型：
@@ -378,7 +356,7 @@ PRODUCT_CS("105", "客服")
 
 (1) 启动日志
 
-```
+```mathematica
 action=02 #注释：(launch启动)
 eventType=无交互事件
 exts=无扩展信息
@@ -413,7 +391,7 @@ exts=无扩展信息
 
 (2) 页面浏览日志
 
-```
+```mathematica
 action=07 | 08 #注释：page_enter_native 08 | page_enter_h5 07 产品页面进入
 eventType= 01 #注释： view 浏览
 exts={
@@ -452,7 +430,7 @@ exts={
 
 (3-1) 点击日志
 
-```
+```mathematica
 action=05 #注释：interactive 交互式
 eventType=02 #注释：click 点击
 exts={
@@ -493,7 +471,7 @@ exts={
 
 (3-2) 产品列表浏览日志
 
-```
+```mathematica
 action=05 #注释：interactive 交互式
 event_type=01 | 04 #注释： view浏览|slide滑动
 extinfo={
@@ -541,9 +519,9 @@ extinfo={
 
 
 
-#### 维度数据
+#### 二、维度数据
 
-##### 旅游产品维表
+##### 1、旅游产品维表
 
 ```mysql
 CREATE TABLE travel.dim_product (
@@ -562,7 +540,7 @@ CREATE TABLE travel.dim_product (
 
 
 
-##### 酒店维表
+##### 2、酒店维表
 
 ```mysql
 CREATE TABLE travel.dim_pub (
@@ -704,7 +682,7 @@ CREATE TABLE travel.dim_pub (
 
 ### 技术架构图
 
-![](D:/qfBigWorkSpace/qtravel/doc/%E9%A1%B9%E7%9B%AE%E6%96%87%E6%A1%A3/pic/travel_bigdata_platform.png)
+![](pic/travel_bigdata_platform.png)
 
 
 
@@ -732,7 +710,7 @@ CREATE TABLE travel.dim_pub (
 
 ### 技术选型说明
 
-```
+```mathematica
 一 数据来源及采集
 	1  埋点数据： 
 	   由前端(js或手机终端)发送后台微服务相关埋点数据
@@ -838,7 +816,7 @@ CREATE TABLE travel.dim_pub (
 
 #### 背景说明
 
-```
+```mathematica
 对于使用Flink框架来处理实时场景来说，首先是要构建的是StreamExecutionEnvironment，当然Flink也提供了处理离线场景的对应上下文对象ExecutionEnvironment
 基于功能复用的思想我们封装了一些常用的功能形成Flink帮助类：FlinkHelper，下面这段代码提取了构建上下文环境对象的函数。
 注释：com.qf.bigdata.realtime.flink.util.help.FlinkHelper
@@ -891,7 +869,7 @@ CREATE TABLE travel.dim_pub (
 
 #### 背景说明
 
-```
+```mathematica
 Flink作为计算框架必然会涉及其他资源型框架的读写工作，如存储框架Hadoop、HBase，消息通道Kafka等，当然kafka所能连接的框架还有很多，大部分第三方的连接源称为connector，按照输入或输出位置分为了source和sink，下面我们列举了在实时场景下常用的几种source或sink。
 1 kafka消息通道
 2 jdbc数据源
@@ -1280,7 +1258,7 @@ ds.addSink(redisSink)
 
 背景说明
 
-```
+```mathematica
 项目开发过程中涉及到的配置参数、参数数值尽量用类常量设置，而不要使用硬编码方式，下面示例展示了部分主要的配置参数(摘自QRealTimeConstant)，全部参数请参考项目代码
 注释：com.qf.bigdata.realtime.flink.constant.QRealTimeConstant
 ```
@@ -1293,7 +1271,7 @@ ds.addSink(redisSink)
 
 #### 背景说明
 
-```
+```mathematica
 目前实时场景的数据来源一般是取自消息队列(如kafka)，下面我们看看如何使用Flink来进行kafka数据的读取工作。
 我们以用户行为日志中的点击行为为示例进行说明，下例为用户点击行为明细处理类UserLogsClickHandler中的局部片段，具体完整代码请参考项目相关代码。
 注释：com.qf.bigdata.realtime.flink.streaming.etl.ods.UserLogsClickHandler
@@ -1324,7 +1302,7 @@ val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(che
 
 (2) 连接kafka服务集群
 
-```
+```mathematica
 Flink读取kafka采用的是connector方式
 1 加载相关jar包(maven)，参考【开发准备工作】
 2 配置kafka集群相关参数及消费方式
@@ -1420,16 +1398,14 @@ class UserLogsKSchema(topic:String) extends KafkaSerializationSchema[UserLogData
 /**
     * 用户行为日志原始数据
     */
-case class UserLogData(sid:String, userDevice:String, userDeviceType:String, os:String,
-                       userID:String,userRegion:String, userRegionIP:String,                                    lonitude:String, latitude:String,manufacturer:String,                                    carrier:String, networkType:String, duration:String, exts:String,
-                       action:String, eventType:String, ct:Long)
+case class UserLogData(sid:String, userDevice:String, userDeviceType:String, os:String,userID:String,userRegion:String,userRegionIP:String,lonitude:String,latitude:String,manufacturer:String,carrier:String,networkType:String, duration:String, exts:String,action:String, eventType:String, ct:Long)
 ```
 
 
 
 #####  构建实时数据流
 
-```
+```mathematica
 Flink对数据输入与输出分别称为：source 和 sink
 1 通过设置输入数据source(FlinkKafkaConsumer对象)
 2 设置并行度slot数量
@@ -1450,7 +1426,7 @@ val dStream :DataStream[UserLogData] = env.addSource(kafkaConsumer).setParalleli
 
 #### 背景说明
 
-```
+```mathematica
 实时场景下，原始数据可能存在不规范、较脏的情况，尤其是在高并发或需要处理的业务逻辑较复杂的情况下，对于实时场景的数据计算处理性能产生一定影响，这样需要我们对各类实时指标进行多阶段分步处理，比如第一步为数据规范处理(ETL),第二步为业务指标计算。经过第一步的数据清理工作后再发送到数据通道(kafka)中做消费计算，这样提高了实时处理性能同时数据复用得到了保障，同时对于有实时明细数据查询或动态聚合需求的情况可以结合其他技术进行实现(如druid可以对实时数据进行摄取提供对使用者的各种计算方式的支持)
 最后强调一点：多步骤处理实时场景问题时是根据数据并发程度、计算复杂性、平台计算时效性等综合指标来确定的，在实际工作中要根据实际情况来进行处理，不必照搬这种设计方案！！！
 ```
@@ -1491,7 +1467,7 @@ val dStream :DataStream[UserLogData] = env.addSource(kafkaConsumer).setParalleli
 
 ###### 背景说明
 
-```
+```mathematica
 正如上例所示，我们在进行点击日志统计时需要提取扩展字段(exts)中对应的数据信息，这些可能要作为统计维度参与业务统计，所以需要先进行实时数据ETL工作,按照之前的相关代码我们已经获取了kafka的数据并通过Flink读取形成数据流，如下列所示，具体代码参考UserLogsClickHandler
 注释：com.qf.bigdata.realtime.flink.streaming.etl.ods.UserLogsClickHandler
 ```
@@ -1630,7 +1606,7 @@ case class UserLogClickData(sid:String, userDevice:String, userDeviceType:String
 
 ###### 背景说明
 
-```
+```mathematica
 请仔细观察【用户点击行为示例数据】和【用户产品列表浏览示例数据】，你会发现除了数据schema有些不同外最主要的是扩展信息exts中的【targetIDS】字段为json数组形式，结合业务含义，表达的是一个用户通过查询搜索获得的产品列表或用户在上下滑动手机进行类似翻页浏览产品页信息，但如果我们有【热门产品】统计、排名等需求时首先要将这些列表进行拆分，从软件功能上来讲称为"1拆多"(flatMap)，所以在后续做指标统计之前第一步先做好数据的ETL工作，具体如下列所示，具体代码参考UserLogsViewListHandler
 注释：com.qf.bigdata.realtime.flink.streaming.etl.ods.UserLogsViewListHandler
 ```
@@ -1816,8 +1792,8 @@ case class UserLogViewListFactData(sid:String, userDevice:String,userDeviceType:
 
 #### 背景说明
 
-```
-如果我们做过离线数仓会知道有事实层、维表层、集市层等，集市层或中间层的统计数据、明细数据往往会是宽表数据或基于宽表数据聚合而来，在实时数仓中也是类似，根据需求我们会将消息通道的数据作为事实数据，把维表数据通过广播等方式加载到任务执行节点(taskManager)上进行宽表数据合成，进而后续可以完成不同的统计需求，但这里与多维计算模型不同(keylin处理多维计算模型的框架)，仅仅是在一定范围内的分组聚合，如你有多维计算的需求请直接使用kylin即可(kylin对离线和实时2种场景都支持)，所以下面我们聊聊宽表数据的构成过程，下面代码为主要代码，具体代码请参考项目, 下面示例是旅游产品订单业务。
+```mathematica
+如果我们做过离线数仓会知道有事实层、维表层、集市层等，集市层或中间层的统计数据、明细数据往往会是宽表数据或基于宽表数据聚合而来，在实时数仓中也是类似，根据需求我们会将消息通道的数据作为事实数据，把维表数据通过广播等方式加载到任务执行节点(taskManager)上进行宽表数据合成，进而后续可以完成不同的统计需求，但这里与多维计算模型不同(kylin处理多维计算模型的框架)，仅仅是在一定范围内的分组聚合，如你有多维计算的需求请直接使用kylin即可(kylin对离线和实时2种场景都支持)，所以下面我们聊聊宽表数据的构成过程，下面代码为主要代码，具体代码请参考项目, 下面示例是旅游产品订单业务。
 注释：
 1 广播方式 com.qf.bigdata.realtime.flink.streaming.etl.dw.orders.OrdersWideDetail2ESHandler
 2 异步IO方式 com.qf.bigdata.realtime.flink.streaming.etl.dw.orders.OrdersWideAsyncHander
@@ -1855,7 +1831,7 @@ case class UserLogViewListFactData(sid:String, userDevice:String,userDeviceType:
 
 #### 宽表构造
 
-```
+```mathematica
 从上面的【旅游产品订单】中可以看出与其相关的维表有【地域维度表】、【旅游产品维度表】、可能还有【酒店维度表】(具体看是否包含在旅游产品中)，在此我们先以【旅游产品维度表】示例看看如何进行宽表构造。
 强调一点维表数据量不能很大(当然维表数据量级较大的话会放在hbase之中)！！！
 ```
@@ -1870,7 +1846,7 @@ case class UserLogViewListFactData(sid:String, userDevice:String,userDeviceType:
 
 ###### 维度数据提取
 
-```
+```mathematica
 对于mysql维表的读取工作，本例是基于Flink-JDBC包来完成的
 1 创建读取的mysql数据源(表)的字段类型列表，List[TypeInformation[_]]
 2 构造JDBCInputFormat，随后形成[Row]元素形式的数据流DataStream
@@ -1986,7 +1962,7 @@ val dimProductBCStream :BroadcastStream[ProductDimDO] = productDS.broadcast(prod
 
 ###### 订单实时数据
 
-```
+```mathematica
 如同在【kafka-Flink消费】中类似，通过对订单业务所对应的kafka topic读取并进行转换形成了订单明细对象OrderDetailData，同时基于事件时间进行窗口数据划分并设置了水位，最终形成订单数据流。
 注释：下列代码来自于com.qf.bigdata.realtime.flink.streaming.etl.dw.orders.OrdersWideDetail2ESHandler
 ```
@@ -2108,7 +2084,7 @@ override def processBroadcastElement(value: ProductDimDO, ctx: BroadcastProcessF
 
 背景说明
 
-```
+```mathematica
 不同于广播方式，异步IO方式核心思想是实时读取订单数据，异步方式加载其他资源数据（如mysql），然后和事实流数据整合形成宽表数据。
 注释：具体代码参考 com.qf.bigdata.realtime.flink.streaming.etl.dw.orders.OrdersWideAsyncHander
 ```
@@ -2187,7 +2163,7 @@ val syncFunc = new DimProductAsyncFunction(dbPath, productDBQuery, useLocalCache
 
 ###### 异步IO构造宽表
 
-```
+```mathematica
 下面代码使用了google cache和redis、阿里数据库连接池Druid、定时调度ScheduledThreadPoolExecutor完成一个定时同步数据并结合缓存数据提供维表信息的功能，同时提供了异步处理功能，因为实现了RichAsyncFunction异步富操作函数，最后结合AsyncDataStream完成异步IO构造宽表。
 强调一点：由于这里涉及代码及功能点相对较多，所以下面是主要局部代码，具体代码请参考项目
 注释： com.qf.bigdata.realtime.flink.streaming.etl.dw.orders.OrdersWideAsyncHander
@@ -2388,7 +2364,7 @@ val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(orderDeta
 
 #### 多维表宽表构造
 
-```
+```mathematica
 对于需要使用多维表来构造宽表的情况，可以参考OrdersWideAsyncHander中的方法，原理和异步IO里提到的类似，核心想法是构造map结构的多维表数据信息后定时查询同步。
 强调一点维表数据量不能很大(当然维表数据量级较大的话会放在hbase之中)
 ```
@@ -2399,7 +2375,7 @@ val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(orderDeta
 
 #### 背景说明
 
-```
+```mathematica
 我们之前说过，对于在高并发或需要处理的业务逻辑较复杂的情况下，对于实时场景的数据计算处理性能产生一定影响，另外如果使用方需求查询实时明细数据或是其他的分组聚合方式，我们都是统计结果输出如何满足需求呢。所以在一些场景下需要我们将实时数据保存起来，当然是经过ETL之后的干净数据。
 在实时场景下保存数据又可能会被使用方查询，那么选择时序库是比较好的方案，比如ES和 apache druid(当然druid并不是由Flink直接写入数据，而是通过将数据发送到kafka由druid作为数据源摄取)，这样在Flink的sink端我们介绍下这几种sink，另外作为聚合数据也可以输出到kafka、es、redis之中。项目中根据不同业务需求会有很多类似的开发代码，下面示例仅仅作为展示示例，更多示例请参考项目代码，分别展示了输出数据到kafka和es
 1 自定义sink(ES)  
@@ -2419,7 +2395,7 @@ val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(orderDeta
 
 创建页面浏览数据流
 
-```
+```mathematica
 通过kafka数据通道读取全部行为日志经过过滤、ETL处理得到【页面浏览数据】
 1 设置数据流的时间语义：事件时间
 2 通过kafka配置文件消费消息通道数据
@@ -2709,7 +2685,7 @@ viewDStream.addSink(viewKafkaProducer)
 
 #### 背景说明
 
-``` 
+``` mathematica
 在实际工作中，不论离线还是实时场景统计报表、统计排名、去重统计是常用的计算方式，再细分又有开窗统计还是实时统计，其中就涉及开窗方式、窗口计算触发方式、延迟到达数据、测流输出、数据流状态保存等问题，下面我们来一一解决。
 ```
 
@@ -2721,7 +2697,7 @@ viewDStream.addSink(viewKafkaProducer)
 
 ###### 需求点
 
-```
+```mathematica
 解决以【userRegion:用户所属地区、traffic:出游交通方式】做维度，
 【orders:订单数量, maxFee:最高消费, totalFee:消费总数, members:旅游人次】做度量
 旅游订单固定间隔N分钟统计指标或近N分钟统计指标。
@@ -2729,7 +2705,7 @@ viewDStream.addSink(viewKafkaProducer)
 
 ###### 技术分析
 
-```
+```mathematica
 1 数据源
   基于订单事实明细数据来完成
   
@@ -2967,13 +2943,13 @@ aggDStream.addSink(redisSink)
 
 ###### 需求点
 
-```
+```mathematica
 解决以【productType:产品种类、toursimType:产品类型】做维度，【orders:订单数量, maxFee:最高消费, totalFee:消费总数, members:旅游人次】做度量的订单固定间隔N分钟统计指标或近N分钟统计指标。
 ```
 
 ###### 技术分析
 
-```
+```mathematica
 1 数据源
   考虑到聚合维度的扩展性，可以基于订单宽表明细数据来完成而不是订单事实数据
   
@@ -3120,13 +3096,13 @@ aggDStream.addSink(travelKafkaProducer)
 
 ###### 需求点
 
-```
+```mathematica
 有了分类统计结果就可以进行排名操作，比如各种热门排名
 ```
 
 ###### 技术分析
 
-```
+```mathematica
 1 数据源
   订单统计结果
   
@@ -3219,7 +3195,7 @@ class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTra
 
 ###### 需求点
 
-```
+```mathematica
 1 数据源
   基于订单事实明细数据来完成
   
@@ -3235,7 +3211,7 @@ class OrderTopNKeyedProcessFun(topN:Long) extends ProcessWindowFunction[OrderTra
 
 ###### 技术分析
 
-```
+```mathematica
 1 数据源
   订单明细数据
   
@@ -3496,14 +3472,14 @@ class OrdersStatisTimeTrigger(maxInterval :Long, timeUnit:TimeUnit) extends Trig
 
 ###### 需求点
 
-```
+```mathematica
 解决以【traffic:出游交通方式、时间维度 小时级 hourTime】做维度，【orders:订单数量, maxFee:最高消费, totalFee:消费总数, members:旅游人次】做度量的订单固定间隔N分钟统计指标或近N分钟统计指标。
 关键点：UV（去重）
 ```
 
 ###### 技术分析
 
-```
+```mathematica
 1 数据源
   基于订单事实明细数据来完成
   
@@ -3634,13 +3610,13 @@ class OrdersStatisTimeTrigger(maxInterval :Long, timeUnit:TimeUnit) extends Trig
 
 ###### 需求点
 
-```
+```mathematica
 解决以【productType:产品种类、toursimType:产品类型】做维度，【startWindowTime:开始时间, endWindowTime:结束时间, orders:订单数, users:用户人数, totalFee:消费总数】做度量的自定义触发、计算处理。
 ```
 
 ###### 技术分析
 
-```
+```mathematica
 1 数据源
   基于订单事实明细数据来完成
   
@@ -3832,7 +3808,7 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
 
 #### 背景说明
 
-```
+```mathematica
 在实际工作中，可能会遇到要求数据能够实时的采集下来或者在高并发场景下业务逻辑以异步方式集合消息通道来进行数据处理，这样就涉及一个问题数据如何实时采集，虽然有像flume这样的采集框架，但它基于数据量大小和时间间隔的方式不一定能满足实时采集要求，所以消息通道+消息消费落地这种技术方案可以解决这类问题，数据通道可以采用kafka，消息消费可以采用Flink、SparkStreaming等框架完成。另外实时采集到的数据还可以校对实时计算结果或进行补救措施。
 ```
 
@@ -3842,7 +3818,7 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
 
 ##### 需求点
 
-```
+```mathematica
 用户浏览页面日志停留时长普通情况下应该符合本行业的规律，远低于范围或高于范围的数据应该发出报警信息以预防并进一步分析原因，示例记录用户浏览页面场景下停留时长<5s或>200s的异常情况并进行追踪或报警处理
 ```
 
@@ -3850,7 +3826,7 @@ val statisDStream:DataStream[OrderWideCustomerStatisData] = orderWideDStream.key
 
 ##### 技术分析
 
-```
+```mathematica
 1 数据源
   基于用户浏览页面日志数据来完成
   
@@ -3899,7 +3875,7 @@ val viewDurationAlertDStream :DataStream[UserLogPageViewAlertData] = viewPattern
 
 #### 背景说明
 
-```
+```mathematica
 在实际工作中，可能会遇到要求数据能够实时的采集下来或者在高并发场景下业务逻辑以异步方式集合消息通道来进行数据处理，这样就涉及一个问题数据如何实时采集，虽然有像flume这样的采集框架，但它基于数据量大小和时间间隔的方式不一定能满足实时采集要求，所以消息通道+消息消费落地这种技术方案可以解决这类问题，数据通道可以采用kafka，消息消费可以采用Flink、SparkStreaming等框架完成。另外实时采集到的数据还可以校对实时计算结果或进行补救措施。
 ```
 
@@ -3917,7 +3893,7 @@ val viewDurationAlertDStream :DataStream[UserLogPageViewAlertData] = viewPattern
 
 ##### 技术分析
 
-```
+```mathematica
 1 数据源
   基于订单事实明细数据来完成
   
@@ -3973,31 +3949,11 @@ val hdfsSink: StreamingFileSink[String] = StreamingFileSink
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## 附录：
 
 1 大数据全栈主要技术说明
 
-```
+```mathematica
 一 数据采集
 	1  埋点数据： 
 		   由微服务后台以发送消息形式采集各种埋点数据
@@ -4040,7 +3996,7 @@ val hdfsSink: StreamingFileSink[String] = StreamingFileSink
 
 2 旅游行业相关数据
 
-```
+```mathematica
 1 携程数据分析
 https://www.afenxi.com/24468.html
 

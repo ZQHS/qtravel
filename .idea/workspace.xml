@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="85af0c9a-a005-478c-811d-173c62e0ac39" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/src/main/scala/com/qianfeng/bigdata/realtime/flink/streaming/schema/OrderDetailKSchema.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/造数/shell/kafka_logs.sh" beforeDir="false" afterPath="$PROJECT_DIR$/doc/造数/shell/kafka_logs.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/造数/旅游造数项目启动脚本.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/造数/旅游造数项目启动脚本.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/doc/项目文档/X程旅游.md" beforeDir="false" afterPath="$PROJECT_DIR$/doc/项目文档/X程旅游.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/bean/ReleaseBean.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/bean/SourcesBean.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/constant/CommonConstant.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/constant/TravelConstant.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/domain/ReleaseDO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/dvo/GisDO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/dvo/SourceChannelDO.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/ActionEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/AidEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/BannerTypeEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/BiddingStatusEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/BiddingTypeEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/BusyDBEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/CanalModelEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/CarrierEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/DBColumnTypeEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/DeviceTypeEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/EventActionEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/EventEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/GeoDictEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/GeoLevelEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/ManufacturerEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/NetWorkSignalTypeEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/NetworkTypeEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/OSEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/PricingTypeEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/ProductRelEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/ReleaseStatusEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/SourceEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/SourcesChannelEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/enumes/TravelProductTypeEnum.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/AmapGisUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/CSVUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/CommonUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/FileIOUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/FileNameFilterImpl.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/GisUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/PropertyUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/QParameterTool.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/ReflexUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/cache/GuavaCache.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/cache/LettuceRedis.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/cache/ObjectTranscoder.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/cache/RedisCache.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/db/DBDruid.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/format/QParquetHelper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/json/JsonFormat.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/json/JsonHelper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/json/JsonMapperUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/json/JsonUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/kafka/KafkaCallback.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/kafka/KafkaPartitionKeyUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/kafka/KafkaUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/kafka/consumer/KafkaConsumerUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/kafka/producer/KafkaProducerUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/kafka/serializable/kryo/DomainDecoding.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/kafka/serializable/kryo/DomainEncoding.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/kryo/KryoUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/rocksdb/RocksDBHelper.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/uid/QUIDService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/uid/SnowFlakeUIDService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/qf/bigdata/realtime/util/zookeeper/ZKClientUtil.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/areacode/areacode.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/areacode/china_gis_location.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/areacode/china_gis_location2.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/avro/userlogs_launch.avsc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/core-site.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/data/oders_data.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/es/es-config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/gis/gis_location.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/hdfs-site.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/jdbc.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/kafka/flink/kafka-consumer.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/kafka/flink/kafka-producer.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/kafka/json/kafka-consumer.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/kafka/json/kafka-producer.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/kafka/kafka-config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/kafka/kafka-config.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/logback.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/mapred-site.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/redis/redis.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/000006.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/CURRENT" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/IDENTITY" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/LOCK" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/LOG" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/LOG.old.109722507370" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/LOG.old.109930499881" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/LOG.old.109930809697" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/MANIFEST-000005" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/OPTIONS-000005" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/rocksdb/qf/OPTIONS-000008" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/yarn-site.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources-local/zk/zk.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/areacode/areacode.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/areacode/china_gis_location.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/areacode/china_gis_location2.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/avro/userlogs_launch.avsc" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/core-site.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/data/oders_data.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/es/es-config.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/es/es-config.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/gis/gis_location.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/hdfs-site.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/jdbc.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/jdbc.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/kafka/flink/kafka-consumer.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/kafka/flink/kafka-producer.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/kafka/json/kafka-consumer.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/kafka/json/kafka-producer.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/kafka/kafka-config.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/kafka/kafka-config.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/logback.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/mapred-site.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/redis/redis.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/redis/redis.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/000006.log" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/CURRENT" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/IDENTITY" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/LOCK" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/LOG" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/LOG.old.109722507370" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/LOG.old.109930499881" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/LOG.old.109930809697" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/MANIFEST-000005" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/OPTIONS-000005" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/rocksdb/qf/OPTIONS-000008" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/yarn-site.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/zk/zk.properties" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/constant/QRealTimeConstant.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/OrderDetailKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/OrderStatisKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/OrderWideGroupKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/OrderWideKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/UserLogsKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/UserLogsPageViewAggKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/UserLogsPageViewKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/UserLogsViewAlertKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/UserLogsViewListFactKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/UserLogsViewListKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/schema/UserLogsViewStatisKSchema.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/agg/mapper/QRedisSetMapper.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/agg/orders/OrdersAggCacheHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/agg/orders/OrdersCustomerStatisHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/agg/orders/OrdersDetailAggHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/agg/orders/OrdersStatisHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/agg/orders/OrdersTopnStatisHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/agg/orders/OrdersWideTimeAggHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/agg/selector/OrdersSelector.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/assigner/OrdersPeriodicAssigner.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/assigner/OrdersWidePeriodicAssigner.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/assigner/UserLogsAssigner.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/cep/UserLogsCepFun.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/cep/UserLogsViewEventComparator.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/cep/UserLogsViewWarnHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/etl/dw/orders/OrdersDetailHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/etl/dw/orders/OrdersWideAgg2ESHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/etl/dw/orders/OrdersWideAsyncHander.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/etl/dw/orders/OrdersWideDetail2ESHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/etl/ods/UserLogsClickHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/etl/ods/UserLogsViewHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/etl/ods/UserLogsViewListHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/funs/common/QRealtimeCommFun.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/funs/orders/OrdersAggFun.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/funs/orders/OrdersETLFun.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/rdo/QRealTimeDO.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/rdo/QRealTimeDimDO.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/rdo/typeinformation/QRealTimeDimTypeInformations.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/recdata/OrdersRecHandler.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/sink/CommonESSink.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/sink/orders/OrderStatisESSink.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/sink/orders/OrdersWideAggESSink.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/sockets/QRealtimeSocketTest.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/trigger/OrdersStatisCountTrigger.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/trigger/OrdersStatisTimeTrigger.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/streaming/trigger/OrdersStatisTrigger.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/util/DateUtil.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/util/es/ES6ClientUtil.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/util/es/ESConfigUtil.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/util/help/FlinkHelper.scala" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/com/qf/bigdata/realtime/flink/util/kafka/KafkaConfigUtil.scala" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CodeStyleSettingsInfer">
+    <option name="done" value="true" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="localRepository" value="E:\Java\maven-3.5.4\repository" />
+        <option name="mavenHome" value="E:/Java/maven-3.5.4" />
+        <option name="userSettingsFile" value="E:\Java\maven-3.5.4\conf\settings.xml" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectCodeStyleSettingsMigration">
+    <option name="version" value="1" />
+  </component>
+  <component name="ProjectId" id="1oVuh7r3inSVbaZpih0pYhnvBZG" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="1" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="project.structure.last.edited" value="Global Libraries" />
+    <property name="project.structure.proportion" value="0.0" />
+    <property name="project.structure.side.proportion" value="0.0" />
+    <property name="settings.editor.selected.configurable" value="MavenSettings" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/main/scala/com/qianfeng/bigdata/realtime/flink/streaming/schema" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.UserLogsViewHandler">
+    <configuration name="DBDruid" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.qianfeng.bigdata.realtime.util.DBDruid" />
+      <module name="qtravel" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.qianfeng.bigdata.realtime.util.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="FlinkHelper" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.qianfeng.bigdata.realtime.flink.util.help.FlinkHelper" />
+      <module name="qtravel" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.qianfeng.bigdata.realtime.flink.util.help.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="OrdersWideDetail2ESHandler" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.qianfeng.bigdata.realtime.flink.streaming.etl.dw.orders.OrdersWideDetail2ESHandler" />
+      <module name="qtravel" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.qianfeng.bigdata.realtime.flink.streaming.etl.dw.orders.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="UserLogsClickHandler" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.qianfeng.bigdata.realtime.flink.streaming.etl.ods.UserLogsClickHandler" />
+      <module name="qtravel" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.qianfeng.bigdata.realtime.flink.streaming.etl.ods.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="UserLogsViewHandler" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="com.qianfeng.bigdata.realtime.flink.streaming.etl.ods.UserLogsViewHandler" />
+      <module name="qtravel" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.qianfeng.bigdata.realtime.flink.streaming.etl.ods.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.UserLogsViewHandler" />
+        <item itemvalue="Application.UserLogsClickHandler" />
+        <item itemvalue="Application.FlinkHelper" />
+        <item itemvalue="Application.OrdersWideDetail2ESHandler" />
+        <item itemvalue="Application.DBDruid" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="ServiceViewManager">
+    <option name="viewStates">
+      <list>
+        <serviceView>
+          <treeState>
+            <expand />
+            <select />
+          </treeState>
+        </serviceView>
+      </list>
+    </option>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="85af0c9a-a005-478c-811d-173c62e0ac39" name="Default Changelist" comment="" />
+      <created>1613384194524</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1613384194524</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="446" y="195" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1630294382848">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state x="446" y="195" key="#com.intellij.execution.impl.EditConfigurationsDialog/64.0.1856.1080@64.0.1856.1080" timestamp="1630294382848" />
+    <state x="721" y="343" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1629980018852">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state x="721" y="343" key="#com.intellij.fileTypes.FileTypeChooser/64.0.1856.1080@64.0.1856.1080" timestamp="1629980018852" />
+    <state x="479" y="465" key="#com.intellij.refactoring.move.MoveHandler.SelectRefactoringDialog" timestamp="1629980264587">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state x="479" y="465" key="#com.intellij.refactoring.move.MoveHandler.SelectRefactoringDialog/64.0.1856.1080@64.0.1856.1080" timestamp="1629980264587" />
+    <state x="603" y="131" key="CommitChangelistDialog2" timestamp="1630307296226">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state x="603" y="131" key="CommitChangelistDialog2/64.0.1856.1080@64.0.1856.1080" timestamp="1630307296226" />
+    <state x="772" y="295" key="FileChooserDialogImpl" timestamp="1629980095600">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state x="772" y="295" key="FileChooserDialogImpl/64.0.1856.1080@64.0.1856.1080" timestamp="1629980095600" />
+    <state width="1813" height="399" key="GridCell.Tab.0.bottom" timestamp="1630306121438">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state width="1813" height="399" key="GridCell.Tab.0.bottom/64.0.1856.1080@64.0.1856.1080" timestamp="1630306121438" />
+    <state width="1813" height="399" key="GridCell.Tab.0.center" timestamp="1630306121438">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state width="1813" height="399" key="GridCell.Tab.0.center/64.0.1856.1080@64.0.1856.1080" timestamp="1630306121438" />
+    <state width="1813" height="399" key="GridCell.Tab.0.left" timestamp="1630306121438">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state width="1813" height="399" key="GridCell.Tab.0.left/64.0.1856.1080@64.0.1856.1080" timestamp="1630306121438" />
+    <state width="1813" height="399" key="GridCell.Tab.0.right" timestamp="1630306121438">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state width="1813" height="399" key="GridCell.Tab.0.right/64.0.1856.1080@64.0.1856.1080" timestamp="1630306121438" />
+    <state x="493" y="182" key="SettingsEditor" timestamp="1629980109186">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state x="493" y="182" key="SettingsEditor/64.0.1856.1080@64.0.1856.1080" timestamp="1629980109186" />
+    <state x="156" y="92" width="1672" height="896" key="com.intellij.history.integration.ui.views.FileHistoryDialog" timestamp="1629980305295">
+      <screen x="64" y="0" width="1856" height="1080" />
+    </state>
+    <state x="156" y="92" width="1672" height="896" key="com.intellij.history.integration.ui.views.FileHistoryDialog/64.0.1856.1080@64.0.1856.1080" timestamp="1629980305295" />
+  </component>
+</project>
