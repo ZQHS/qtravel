@@ -82,7 +82,9 @@ object UserLogsViewWarnHandler {
       .begin[UserLogPageViewData](QRealTimeConstant.FLINK_CEP_VIEW_BEGIN)
       .where(//对应规则逻辑  --- 可以不要ctx参数
         (value: UserLogPageViewData, ctx) => {
+          // 停留时长
           val durationTime = value.duration.toLong
+          // 停留时长小于5秒大于50秒
           durationTime < minDuration || durationTime > maxDuration
         }
       )

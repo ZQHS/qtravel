@@ -77,6 +77,7 @@ object UserLogsClickHandler {
        *   (1)自定义ES-Sink
        */
       val clickESSink = new UserLogsClickESSink(indexName)
+      // 写入ES
       clickDStream.addSink(clickESSink)
       //触发执行
       env.execute(appName)

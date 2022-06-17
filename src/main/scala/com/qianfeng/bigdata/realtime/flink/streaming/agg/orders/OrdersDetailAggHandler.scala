@@ -109,8 +109,8 @@ object OrdersDetailAggHandler {
     val groupID = "group.OrdersDetailAggHandler"
 
     //kafka数据消费topic
-    //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "travel_ods_orders"
+    // val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
+    val fromTopic = "t_travel_ods"
 
     //订单统计数据输出ES
     val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_STATIS

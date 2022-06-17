@@ -23,6 +23,7 @@ object UserLogsCepFun {
       if(!datas.isEmpty){
         //需要引入scala和java互转
         for(data <- datas.iterator()){
+          // 将数据进行处理，重新封装
           val viewAlertData = UserLogPageViewAlertData(data.userDevice, data.userID, data.userRegion,
             data.userRegionIP, data.duration, data.ct)
           out.collect(viewAlertData)

@@ -55,7 +55,7 @@ object QRealTimeConstant {
 
 
   //本地模型下的默认并行度(cpu core)
-  val DEF_LOCAL_PARALLELISM  = 1//Runtime.getRuntime.availableProcessors
+  val DEF_LOCAL_PARALLELISM  = 1 //Runtime.getRuntime.availableProcessors
 
   //flink服务重启策略相关参数
   val RESTART_ATTEMPTS :Int = 5
@@ -189,7 +189,7 @@ object QRealTimeConstant {
   //请求ID
   val KEY_SID = "sid"
   //用户ID
-  val KEY_USER_ID = "userID"
+  val KEY_USER_ID = "user_id"
   //用户设备号
   val KEY_USER_DEVICE = "userDevice"
   //终端类型
@@ -205,7 +205,7 @@ object QRealTimeConstant {
   //网络类型
   val KEY_NETWORK_TYPE = "networkType"
   //用户所在地区
-  val KEY_USER_REGION = "userRegion"
+  val KEY_USER_REGION = "user_region"
   //用户所在地区IP
   val KEY_USER_REGION_IP = "userRegionIP"
   //经度

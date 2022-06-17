@@ -63,21 +63,21 @@ object ES6ClientUtil {
   //测试
   def main(args: Array[String]): Unit = {
     val transportClient: PreBuiltTransportClient = buildTransportClient()
-    //println(transportClient)
+    println(transportClient)
 
     //测试是否能更新索引
-    val indexName = "user"
-    val esID = "007"
-    var value = new util.HashMap[String,String]()
-    value.put("name","goudan")
-    value.put("age","30")
-    //获取indexrequest
-    val indexRequest: IndexRequest = new IndexRequest(indexName, "book", esID)
-      .source(value)
-    val response: UpdateResponse = transportClient.prepareUpdate(indexName, "book", esID)
-      .setDoc(value)
-      .setUpsert(indexRequest)
-      .get()
-    println(response.status().getStatus)
+    //val indexName = "user"
+    //val esID = "007"
+    //var value = new util.HashMap[String,String]()
+    //value.put("name","goudan")
+    //value.put("age","30")
+    ////获取indexrequest
+    //val indexRequest: IndexRequest = new IndexRequest(indexName, "book", esID)
+    //  .source(value)
+    //val response: UpdateResponse = transportClient.prepareUpdate(indexName, "book", esID)
+    //  .setDoc(value)
+    //  .setUpsert(indexRequest)
+    //  .get()
+    //println(response.status().getStatus)
   }
 }

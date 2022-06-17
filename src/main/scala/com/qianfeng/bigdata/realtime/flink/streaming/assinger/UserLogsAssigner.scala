@@ -33,6 +33,7 @@ class UserLogsAssigner(maxOutOfOrderness :Long) extends AssignerWithPeriodicWate
    * @return
    */
   override def extractTimestamp(element: UserLogData, previousElementTimestamp: Long): Long = {
+    // 提取数据的事件时间
     val ct = element.ct
     currentMaxTimestamp = Math.max(ct,currentMaxTimestamp)
     ct

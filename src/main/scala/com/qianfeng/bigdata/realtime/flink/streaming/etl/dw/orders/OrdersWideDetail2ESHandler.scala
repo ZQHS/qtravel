@@ -1,7 +1,5 @@
 package com.qianfeng.bigdata.realtime.flink.streaming.etl.dw.orders
 
-import java.util.Properties
-
 import com.qianfeng.bigdata.realtime.flink.constant.QRealTimeConstant
 import com.qianfeng.bigdata.realtime.flink.streaming.assinger.OrdersPeriodicAssigner
 import com.qianfeng.bigdata.realtime.flink.streaming.funs.orders.OrdersETLFun.{OrderDetailDataMapFun, OrderWideBCFunction}
@@ -10,11 +8,9 @@ import com.qianfeng.bigdata.realtime.flink.streaming.rdo.QRealTimeDimDO.ProductD
 import com.qianfeng.bigdata.realtime.flink.streaming.rdo.typeinformation.QRealTimeDimTypeInformations
 import com.qianfeng.bigdata.realtime.flink.streaming.sink.CommonESSink
 import com.qianfeng.bigdata.realtime.flink.util.help.FlinkHelper
-import com.qianfeng.bigdata.realtime.util.PropertyUtil
 import com.qianfeng.bigdata.realtime.util.JsonUtil
 import org.apache.flink.api.common.state.MapStateDescriptor
 import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.datastream.BroadcastStream
@@ -22,7 +18,6 @@ import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrderness
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
-import org.apache.flink.types.Row
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConversions._
@@ -125,24 +120,24 @@ object OrdersWideDetail2ESHandler {
         *   (1) 通过指定ES索引id用于后续流程进行数据搜索功能
         *   (2) ES接受map结构或json形式的数据(这里需要转换数据类型为map结构)
         */
-      val esDStream:DataStream[String] = orderWideDStream.map(
-        (value : OrderWideData) => {
-          val result :java.util.Map[String,Object] = JsonUtil.gObject2Map(value)
-          val eid = value.orderID
-          result +=(QRealTimeConstant.KEY_ES_ID -> eid)
-          val addJson = JsonUtil.object2json(result)
-          addJson
-        }
-      )
-      esDStream.print("order.esDStream---")
+      //val esDStream:DataStream[String] = orderWideDStream.map(
+      //  (value : OrderWideData) => {
+      //    val result :java.util.Map[String,Object] = JsonUtil.gObject2Map(value)
+      //    val eid = value.orderID
+      //    result +=(QRealTimeConstant.KEY_ES_ID -> eid)
+      //    val addJson = JsonUtil.object2json(result)
+      //    addJson
+      //  }
+      //)
+      //esDStream.print("order.esDStream---")
 
       /**
         * 9 数据输出Sink
         *   (1) 自定义ESSink输出数据到ES索引
         *   (2) 通用类型ESSink：CommonESSink
         */
-      val orderWideDetailESSink = new CommonESSink(indexName)
-      esDStream.addSink(orderWideDetailESSink)
+      //val orderWideDetailESSink = new CommonESSink(indexName)
+      //esDStream.addSink(orderWideDetailESSink)
 
       env.execute(appName)
     }catch {
@@ -169,7 +164,7 @@ object OrdersWideDetail2ESHandler {
 
     //kafka数据源topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "test_ods"
+    val fromTopic = "t_travel_ods"
 
     //kafka消费组
     val groupID = "group.OrdersWideDetail2ESHandler"

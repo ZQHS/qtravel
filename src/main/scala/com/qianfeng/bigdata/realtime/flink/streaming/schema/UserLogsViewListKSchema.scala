@@ -44,11 +44,11 @@ class UserLogsViewListKSchema(topic:String) extends KafkaSerializationSchema[Use
   }
 
   override def isEndOfStream(nextElement: UserLogViewListData): Boolean = {
-    return false
+     false
   }
 
   override def getProducedType: TypeInformation[UserLogViewListData] = {
-    return TypeInformation.of(classOf[UserLogViewListData])
+     TypeInformation.of(classOf[UserLogViewListData])
   }
 }
 

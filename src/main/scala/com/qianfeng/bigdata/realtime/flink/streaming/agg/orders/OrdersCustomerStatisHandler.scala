@@ -72,7 +72,7 @@ object OrdersCustomerStatisHandler {
           val depCode = row.getField(3).toString
           val desCode = row.getField(4).toString
           val toursimType = row.getField(5).toString
-          new ProductDimDO(productID, productLevel, productType, depCode, desCode, toursimType)
+          ProductDimDO(productID, productLevel, productType, depCode, desCode, toursimType)
         }
       )
 
@@ -128,7 +128,7 @@ object OrdersCustomerStatisHandler {
       esDStream.print("时间-")
 
       val orderAggESSink = new CommonESSink(indexName)
-      esDStream.addSink(orderAggESSink)
+      // esDStream.addSink(orderAggESSink)
 
       env.execute(appName)
     }catch {
@@ -149,7 +149,7 @@ object OrdersCustomerStatisHandler {
 
     //kafka数据消费topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "travel_ods_orders"
+    val fromTopic = "t_travel_ods"
 
     //订单聚合结果输出ES
     val indexName = QRealTimeConstant.ES_INDEX_NAME_ORDER_CUSTOMER_STATIS

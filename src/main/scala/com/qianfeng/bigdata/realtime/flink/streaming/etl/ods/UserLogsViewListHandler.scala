@@ -96,7 +96,7 @@ object UserLogsViewListHandler {
 
     //kafka数据源topic
     //val fromTopic = QRealTimeConstant.TOPIC_LOG_ODS
-    val fromTopic = "travel_ods_logs"
+    val fromTopic = "travel_logs_ods"
 
     //ETL后的明细日志数据输出kafka
     //val toTopic = QRealTimeConstant.TOPIC_LOG_ACTION_VIEWLIST

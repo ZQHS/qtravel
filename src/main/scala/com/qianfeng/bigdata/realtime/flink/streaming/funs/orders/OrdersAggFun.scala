@@ -106,7 +106,10 @@ object OrdersAggFun {
    * 订单明细数据的窗口处理函数
    */
   class OrderDetailTimeWindowFun extends WindowFunction[OrderDetailTimeAggMeaData, OrderDetailTimeAggDimMeaData, OrderDetailAggDimData, TimeWindow]{
-    override def apply(key: OrderDetailAggDimData, window: TimeWindow, input: Iterable[OrderDetailTimeAggMeaData], out: Collector[OrderDetailTimeAggDimMeaData]): Unit = {
+    override def apply(key: OrderDetailAggDimData,
+                       window: TimeWindow,
+                       input: Iterable[OrderDetailTimeAggMeaData],
+                       out: Collector[OrderDetailTimeAggDimMeaData]): Unit = {
       //分组维度
       val userRegion = key.userRegion
       val traffic = key.traffic
@@ -193,9 +196,11 @@ object OrdersAggFun {
       var userKeys :mutable.Set[String] = usersState.value
       var ordersAcc :OrderAccData =  ordersAccState.value
       if(null == ordersAcc){
-        ordersAcc = new OrderAccData(QRealTimeConstant.COMMON_NUMBER_ZERO, QRealTimeConstant.COMMON_NUMBER_ZERO)
+        // 初始值
+        ordersAcc = OrderAccData(QRealTimeConstant.COMMON_NUMBER_ZERO, QRealTimeConstant.COMMON_NUMBER_ZERO)
       }
       if(null == userKeys){
+        // 初始值
         userKeys = mutable.Set[String]()
       }
 
@@ -213,16 +218,19 @@ object OrdersAggFun {
         if(!userKeys.contains(userID)){
           userKeys += userID
         }
+        // 本身set就是无序不重复的，自动去重
+        // userKeys.add(userID)
+        // 求用户数量
         usersCount = userKeys.size
       }
 
-      val orderDetailStatis = new OrderDetailStatisData(traffic, hourTime, totalOrders, usersCount, totalFee, ptTime)
+      val orderDetailStatis = OrderDetailStatisData(traffic, hourTime, totalOrders, usersCount, totalFee, ptTime)
       //println(s"""orderDetailStatis=${orderDetailStatis}""")
       out.collect(orderDetailStatis)
 
       //状态数据更新
       usersState.update(userKeys)
-      ordersAccState.update(new OrderAccData(totalOrders, totalFee))
+      ordersAccState.update(OrderAccData(totalOrders, totalFee))
     }
 
 
@@ -242,7 +250,9 @@ object OrdersAggFun {
   /**
    * 订单业务：自定义分组处理函数
    */
-  class OrderCustomerStatisKeyedProcessFun(maxCount :Long, maxInterval :Long, timeUnit:TimeUnit) extends KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData] {
+  class OrderCustomerStatisKeyedProcessFun(maxCount :Long,
+                                           maxInterval :Long,
+                                           timeUnit:TimeUnit) extends KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData] {
 
     //参与订单的用户数量状态描述名称
     val CUSTOMER_ORDER_STATE_USER_DESC = "CUSTOMER_ORDER_STATE_USER_DESC"
@@ -287,7 +297,9 @@ object OrdersAggFun {
      * @param ctx 上下文环境对象
      * @param out 输出结果
      */
-    override def processElement(value: OrderWideData, ctx: KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData]#Context, out: Collector[OrderWideCustomerStatisData]): Unit = {
+    override def processElement(value: OrderWideData,
+                                ctx: KeyedProcessFunction[OrderWideAggDimData, OrderWideData, OrderWideCustomerStatisData]#Context,
+                                out: Collector[OrderWideCustomerStatisData]): Unit = {
       //原始数据
       val productType = value.productType
       val toursimType = value.toursimType
@@ -316,7 +328,7 @@ object OrdersAggFun {
       //PV等度量统计
       var ordersAcc :OrderAccData =  customerOrdersAccState.value
       if(null == ordersAcc){
-        ordersAcc = new OrderAccData(QRealTimeConstant.COMMON_NUMBER_ZERO, QRealTimeConstant.COMMON_NUMBER_ZERO)
+        ordersAcc = OrderAccData(QRealTimeConstant.COMMON_NUMBER_ZERO, QRealTimeConstant.COMMON_NUMBER_ZERO)
       }
       var totalOrders :Long = ordersAcc.orders + 1
       var totalFee :Long = ordersAcc.totalFee + fee
@@ -617,28 +629,34 @@ object OrdersAggFun {
     /**
      * 处理数据
      */
-    override def process(key: OrderTrafficDimData, context: Context, elements: Iterable[OrderTrafficDimMeaData], out: Collector[OrderTrafficDimMeaData]): Unit = {
+    override def process(key: OrderTrafficDimData,
+                         context: Context,
+                         elements: Iterable[OrderTrafficDimMeaData],
+                         out: Collector[OrderTrafficDimMeaData]): Unit = {
       //原始数据
       val productID = key.productID
       val traffic = key.traffic
 
       //排序比较(基于TreeSet)
       val topNContainer = new java.util.TreeSet[OrderTrafficDimMeaData](new OrderTopnComparator())
-
       for(element :OrderTrafficDimMeaData <- elements){
         val orders = element.orders
         val totalFee = element.totalFee
         val startWindowTime = element.startWindowTime
         val endWindowTime = element.endWindowTime
 
-        val value = new OrderTrafficDimMeaData(productID, traffic, startWindowTime, endWindowTime,orders, totalFee)
+        val value = OrderTrafficDimMeaData(productID, traffic, startWindowTime, endWindowTime,orders, totalFee)
         if(!topNContainer.isEmpty){
+          println("+++++++++++++++++++++++++++")
           // 容器大小大于 > topN,,就要移除后面的数据(较小数据)
           if(topNContainer.size() >= topN){
             val first : OrderTrafficDimMeaData = topNContainer.first()
+            println("--------------"+first)
             val result = topNContainer.comparator().compare(first, value)
+            println("=============="+result)
             if(result < 0){
-              topNContainer.pollFirst()
+              println("+++++++++++++"+topNContainer.pollFirst())
+
               topNContainer.add(value)
             }
           }else{

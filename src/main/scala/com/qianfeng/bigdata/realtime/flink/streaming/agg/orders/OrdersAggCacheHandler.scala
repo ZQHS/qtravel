@@ -97,10 +97,10 @@ object OrdersAggCacheHandler {
 
     //kafka数据源topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "travel_ods_orders"
+    val fromTopic = "t_travel_ods"
 
     //redis数据库
-    val redisDB = 9
+    val redisDB = 0
 
     //1 聚合数据输出redis
     handleOrders4RedisJob(appName, groupID, fromTopic, redisDB)

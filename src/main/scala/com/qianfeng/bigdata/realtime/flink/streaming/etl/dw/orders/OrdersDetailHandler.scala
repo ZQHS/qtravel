@@ -89,6 +89,7 @@ object OrdersDetailHandler {
 
       //加入kafka摄入数据时间
       travelKafkaProducer.setWriteTimestampToKafka(true)
+      // 写入Kafka
       orderDetailDStream.addSink(travelKafkaProducer)
 
       env.execute(appName)
@@ -114,7 +115,7 @@ object OrdersDetailHandler {
 
     //kafka数据源topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "test_ods"
+    val fromTopic = "t_travel_ods"
 
 
     //kafka数据输出topic
@@ -126,10 +127,6 @@ object OrdersDetailHandler {
 
     //实时数据ETL
     handleOrdersJob(appName, groupID, fromTopic, toTopic)
-
-
-
-
   }
 
 }

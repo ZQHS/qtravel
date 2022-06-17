@@ -57,7 +57,8 @@ object OrdersStatisHandler {
       /**
         * 2 读取kafka旅游产品订单数据并形成订单实时数据流
         */
-      val orderDetailDStream:DataStream[OrderDetailData] = FlinkHelper.createOrderDetailDStream(env, groupID, fromTopic,timeChar)
+      val orderDetailDStream:DataStream[OrderDetailData] = FlinkHelper.createOrderDetailDStream(
+        env, groupID, fromTopic,timeChar)
       orderDetailDStream.print("orderDetailDStream->")
 
       /**
@@ -71,10 +72,11 @@ object OrdersStatisHandler {
       val statisDStream:DataStream[OrderDetailStatisData] = orderDetailDStream
         .keyBy((detail:OrderDetailData) => {
           val hourTime = CommonUtil.formatDate4Timestamp(detail.ct, QRealTimeConstant.FORMATTER_YYYYMMDDHH)
+          // 出行方式：01|03 和 时间：小时级别0-24
           OrderDetailSessionDimData(detail.traffic, hourTime)
           }
          )
-        .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE)))
+        .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_MAX_SIZE))) // 60秒
         .trigger(new OrdersStaticCountTrigger(maxCount))
         .process(new OrderStatisWindowProcessFun())
       statisDStream.print("statisDStream->")
@@ -172,7 +174,7 @@ object OrdersStatisHandler {
         *   自定义ESSink输出
         */
       val orderWideDetailESSink = new CommonESSink(indexName)
-      esDStream.addSink(orderWideDetailESSink)
+      //esDStream.addSink(orderWideDetailESSink)
 
       env.execute(appName)
     }catch {
@@ -193,12 +195,12 @@ object OrdersStatisHandler {
 
     //kafka数据消费topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "travel_ods_orders"
+    val fromTopic = "t_travel_ods"
 
     //定量触发窗口计算
     val maxCount = 50
     val indexNameCount = "travel_orders_count_statis"
-    //handleOrdersStatis4CountJob(appName, groupID, fromTopic, indexNameCount, maxCount)
+    handleOrdersStatis4CountJob(appName, groupID, fromTopic, indexNameCount, maxCount)
 
     //定时触发窗口计算
     val maxInternal = 1

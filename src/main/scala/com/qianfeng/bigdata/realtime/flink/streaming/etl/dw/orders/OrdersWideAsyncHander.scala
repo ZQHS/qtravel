@@ -1,6 +1,5 @@
 package com.qianfeng.bigdata.realtime.flink.streaming.etl.dw.orders
 
-import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.qianfeng.bigdata.realtime.flink.constant.QRealTimeConstant
@@ -41,7 +40,7 @@ object OrdersWideAsyncHander {
     //查询目标表
     val tableProduct = QRealTimeConstant.MYDQL_DIM_PRODUCT
 
-    new DBQuery(tableProduct, schema, pk, sql)
+    DBQuery(tableProduct, schema, pk, sql)
   }
 
   /**
@@ -139,7 +138,8 @@ object OrdersWideAsyncHander {
       val checkpointInterval = QRealTimeConstant.FLINK_CHECKPOINT_INTERVAL
       val tc = TimeCharacteristic.EventTime
       val watermarkInterval= QRealTimeConstant.FLINK_WATERMARK_INTERVAL
-      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(checkpointInterval, tc, watermarkInterval)
+      val env: StreamExecutionEnvironment = FlinkHelper.createStreamingEnvironment(
+        checkpointInterval, tc, watermarkInterval)
 
 
       /**
@@ -170,9 +170,18 @@ object OrdersWideAsyncHander {
         */
       val useLocalCache :Boolean = false
       val dbPath = QRealTimeConstant.MYSQL_CONFIG_URL
+      // 封装查询字段信息
       val productDBQuery :DBQuery = createProductDBQuery()
+      // 将流数据和mysql维表数据关联生成对应宽表
       val syncFunc = new DimProductAsyncFunction(dbPath, productDBQuery, useLocalCache)
-      val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(orderDetailDStream, syncFunc, QRealTimeConstant.DYNC_DBCONN_TIMEOUT, TimeUnit.MINUTES, QRealTimeConstant.DYNC_DBCONN_CAPACITY)
+      // 将当前的宽表处理放入异步操作算子中，那么此时这个异步不会遵循水位线和窗口执行触发要求，而且按照自己的异步时间执行
+      val asyncDS :DataStream[OrderWideData] = AsyncDataStream.unorderedWait(
+        orderDetailDStream,
+        syncFunc,
+        QRealTimeConstant.DYNC_DBCONN_TIMEOUT,
+        TimeUnit.MINUTES,
+        QRealTimeConstant.DYNC_DBCONN_CAPACITY
+      )
       asyncDS.print("asyncDS===>")
 
 
@@ -189,11 +198,10 @@ object OrdersWideAsyncHander {
         kafkaSerSchema,
         kafkaProductConfig,
         FlinkKafkaProducer.Semantic.AT_LEAST_ONCE)
-
+      // 记录Kafka写入的时间
       travelKafkaProducer.setWriteTimestampToKafka(true)
+      // 写入kafka的Topic中
       asyncDS.addSink(travelKafkaProducer)
-
-
       env.execute(appName)
     }catch {
       case ex: Exception => {
@@ -218,18 +226,17 @@ object OrdersWideAsyncHander {
 
     //kafka数据源topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "test_ods"
+    val fromTopic = "t_travel_ods"
 
     //kafka数据输出topic
     //val toTopic = QRealTimeConstant.TOPIC_ORDER_DW_WIDE
     val toTopic = "test_dw"
 
-
     //1 维表数据异步处理形成宽表
     handleOrdersWideAsyncJob(appName, groupID, fromTopic, toTopic)
 
     //2 多维表数据异步处理形成宽表
-    //handleOrdersMWideAsyncJob(appName, groupID, fromTopic)
+    handleOrdersMWideAsyncJob(appName, groupID, fromTopic)
 
 
 

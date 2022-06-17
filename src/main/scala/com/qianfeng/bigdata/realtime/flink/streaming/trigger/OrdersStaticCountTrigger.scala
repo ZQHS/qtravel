@@ -19,11 +19,16 @@ class OrdersStaticCountTrigger(maxCount:Long) extends Trigger[OrderDetailData,Ti
   val ordersStateDescName = "ORDER_COUNT_TRIGGER"
   var ordersCountState:ValueState[Long] = _
   //需要引入createTypeInfomation包
-  val ordersCountStateDesc: ValueStateDescriptor[Long] = new ValueStateDescriptor[Long](ordersStateDescName, createTypeInformation[Long])
+  // 定义描述器
+  val ordersCountStateDesc: ValueStateDescriptor[Long] = new ValueStateDescriptor[Long](
+    ordersStateDescName, createTypeInformation[Long])
   //val ordersCountStateDesc: ValueStateDescriptor[Long] = new ValueStateDescriptor[Long](ordersStateDescName, TypeInformation.of(new TypeHint[Long] {}))
 
   //每个元素执行一次
-  override def onElement(element: OrderDetailData, timestamp: Long, window: TimeWindow, ctx: Trigger.TriggerContext): TriggerResult = {
+  override def onElement(element: OrderDetailData,
+                         timestamp: Long,
+                         window: TimeWindow,
+                         ctx: Trigger.TriggerContext): TriggerResult = {
     //计数状态
     ordersCountState = ctx.getPartitionedState(ordersCountStateDesc)
 
@@ -31,16 +36,17 @@ class OrdersStaticCountTrigger(maxCount:Long) extends Trigger[OrderDetailData,Ti
     if(ordersCountState.value() == 0){
       ordersCountState.update(QRealTimeConstant.COMMON_NUMBER_ZERO)
     }
+    // 累加元素并更新状态
     val curOrders = ordersCountState.value() + 1
     ordersCountState.update(curOrders)
 
     //触发条件判断
     if(curOrders >= maxCount ){
       this.clear(window, ctx)
-      return TriggerResult.FIRE  //触发并清空
+      TriggerResult.FIRE  //触发并清空
     } else {
       //继续，不触发
-      return TriggerResult.CONTINUE
+      TriggerResult.CONTINUE
     }
   }
 

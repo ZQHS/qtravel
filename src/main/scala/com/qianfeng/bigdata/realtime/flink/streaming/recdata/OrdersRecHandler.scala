@@ -12,7 +12,6 @@ import org.apache.flink.streaming.api.functions.sink.filesystem.{BucketAssigner,
 import org.apache.flink.streaming.api.functions.sink.filesystem.bucketassigners.DateTimeBucketAssigner
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
-import org.slf4j.{Logger, LoggerFactory}
 import org.apache.flink.api.scala._
 import org.apache.flink.formats.parquet.avro.ParquetAvroWriters
 
@@ -23,7 +22,7 @@ import org.apache.flink.formats.parquet.avro.ParquetAvroWriters
 object OrdersRecHandler {
 
   //日志记录
-  val logger :Logger = LoggerFactory.getLogger("OrdersRecHandler")
+  //val logger :Logger = LoggerFactory.getLogger("OrdersRecHandler")
 
   /**
    * 旅游订单实时明细数据采集落地(列式文件格式)
@@ -71,10 +70,11 @@ object OrdersRecHandler {
 
       //4 数据实时采集落地
       //需要引入Flink-parquet的依赖
-      val hdfsParquetSink: StreamingFileSink[OrderDetailData] = StreamingFileSink.forBulkFormat(outputPath,
+      val hdfsParquetSink: StreamingFileSink[OrderDetailData] = StreamingFileSink.forBulkFormat(
+        outputPath,
         ParquetAvroWriters.forReflectRecord(classOf[OrderDetailData]))
-        .withBucketAssigner(bucketAssigner)
-        .withBucketCheckInterval(bucketCheckInl)
+        .withBucketAssigner(bucketAssigner) // 按照不同小时创建文件
+        .withBucketCheckInterval(bucketCheckInl) // 写入的时间间隔
         .build()
       //将数据流持久化到指定sink
       orderDetailDStream.addSink(hdfsParquetSink)
@@ -83,7 +83,7 @@ object OrdersRecHandler {
       env.execute(appName)
     }catch {
       case ex: Exception => {
-        logger.error("OrdersRecHandler.err:" + ex.getMessage)
+        //logger.error("OrdersRecHandler.err:" + ex.getMessage)
       }
     }
 
@@ -94,8 +94,8 @@ object OrdersRecHandler {
     //行数据输出测试
     handleParquet2Hdfs("orderparquet2hdfs",
       "logs-group-id3",
-      "travel_ods_orders",
-      "hdfs://hadoop01:9000/travel/orders_detail/",
-      60)
+      "t_travel_ods",
+      "hdfs://node1:9000/travel/orders_detail/",
+      10)
   }
 }

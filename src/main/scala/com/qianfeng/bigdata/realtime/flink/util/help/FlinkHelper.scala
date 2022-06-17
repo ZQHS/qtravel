@@ -97,12 +97,14 @@ object FlinkHelper {
     val pro: Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
     //重置消费者组
     pro.setProperty("group.id",groupID)
+    // 从头消费
+    pro.setProperty("auto.offset.reset","earliest")
 
     //创建kafka的消费者
     val kafkaConsumer: FlinkKafkaConsumer[String] = new FlinkKafkaConsumer(topic, schema, pro)
 
-    //设置自动提交offset
-    kafkaConsumer.setCommitOffsetsOnCheckpoints(true)
+    //关闭自动提交offset
+    kafkaConsumer.setCommitOffsetsOnCheckpoints(false)
     //返回
     kafkaConsumer
   }
@@ -117,8 +119,12 @@ object FlinkHelper {
    * @tparam T
    * @return
    */
-  def createKafkaSerDeConsumer[T:TypeInformation](env:StreamExecutionEnvironment, topic:String, groupID:String,
-                                             schema:KafkaDeserializationSchema[T], sm:StartupMode):FlinkKafkaConsumer[T] = {
+  def createKafkaSerDeConsumer[T:TypeInformation](
+                                                   env:StreamExecutionEnvironment,
+                                                   topic:String,
+                                                   groupID:String,
+                                                   schema:KafkaDeserializationSchema[T],
+                                                   sm:StartupMode):FlinkKafkaConsumer[T] = {
     //需要kafka的相关参数
     val pro: Properties = PropertyUtil.readProperties(QRealTimeConstant.KAFKA_CONSUMER_CONFIG_URL)
     //重置消费者组
@@ -303,6 +309,7 @@ object FlinkHelper {
     //固定范围的水位指定(注意时间单位)
     var orderDetailDStream :DataStream[OrderDetailData] = env.addSource(kafkaConsumer)
       .setParallelism(QRealTimeConstant.DEF_LOCAL_PARALLELISM)
+      // 将kafka数据流转换成封装bean
       .map(new OrderDetailDataMapFun())
 
     if(TimeCharacteristic.EventTime.equals(timeChar)){

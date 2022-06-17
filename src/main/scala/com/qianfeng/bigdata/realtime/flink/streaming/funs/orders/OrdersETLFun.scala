@@ -74,7 +74,7 @@ object OrdersETLFun {
 
       //事件时间
       val ct :Long = record.getOrDefault(QRealTimeConstant.KEY_ORDER_CT,"").toLong
-
+      // 将数据封装到Bean
       OrderDetailData(orderID, userID, productID, pubID,
         userMobile, userRegion, traffic, trafficGrade, trafficType,
         price, fee, hasActivity:String,

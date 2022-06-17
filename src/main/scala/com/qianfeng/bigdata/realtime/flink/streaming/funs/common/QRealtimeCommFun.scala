@@ -46,9 +46,9 @@ object QRealtimeCommFun {
     var pool :DBDruid = _
 
     //redis连接参数
-    val redisIP = "hadoop01"
+    val redisIP = "node1"
     val redisPort = 6379
-    val redisPass = "root"
+    val redisPass = "123"
 
     //客户端连接
     var redisClient : RedisClient = _
@@ -95,6 +95,7 @@ object QRealtimeCommFun {
       if(useLocalCache){
         localCache = CacheBuilder.newBuilder.maximumSize(10000).expireAfterAccess(60L, TimeUnit.MINUTES).build[String,String]
       }else{
+        // 创建Redis的客户端
         redisClient = RedisClient.create(RedisURI.create(redisIP, redisPort))
         redisConn = redisClient.connect
         redisCmd = redisConn.sync
@@ -106,6 +107,7 @@ object QRealtimeCommFun {
       //定时更新缓存
       val initialDelay: Long = 0l
       val period :Long = 60l
+      // 只要启动后，这个方法默认执行，相当于一个缓存线程不断执行
       scheduled.scheduleAtFixedRate(new Runnable {
         override def run(): Unit = {
           reloadDB()
@@ -124,12 +126,16 @@ object QRealtimeCommFun {
         val orderProductID = input.productID
         var productInfo :String = ""
         if(useLocalCache){
+          // 获取的mysql的维表数据
           productInfo = localCache.getIfPresent(orderProductID)
         }else{
+          // 获取的mysql的维表数据
           val key = dbQuery.table
+          // 从Redis里面获取
           val dataJson : util.Map[String,String] = redisCmd.hgetall(key)
           productInfo =  dataJson.getOrDefault(orderProductID,"")
         }
+        // 将获取到的String类型数据，构建成一个map集合
         val productRow : util.Map[String,Object] = JsonUtil.json2object(productInfo, classOf[util.Map[String,Object]])
 
         //product_id, product_level, product_type, departure_code, des_city_code, toursim_tickets_type
@@ -138,7 +144,7 @@ object QRealtimeCommFun {
         val depCode = productRow.get("departure_code").toString
         val desCode = productRow.get("des_city_code").toString
         val toursimType = productRow.get("toursim_tickets_type").toString
-
+        // 将其封装到结果bean中
         val orderWide = OrderWideData(input.orderID, input.userID, orderProductID, input.pubID,
           input.userMobile, input.userRegion, input.traffic, input.trafficGrade, input.trafficType,
           input.price, input.fee, input.hasActivity,

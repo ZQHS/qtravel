@@ -42,16 +42,17 @@ class UserLogsClickESSink(indexName:String) extends RichSinkFunction[UserLogClic
   override def invoke(value: UserLogClickData, context: SinkFunction.Context[_]): Unit = {
     try {
       //参数校验
+      // 将封装的实体类转换为Map
       val result :java.util.Map[String,Object] = JsonUtil.gObject2Map(value)
       val checkResult: String = checkData(result)
-      if (StringUtils.isNotBlank(checkResult)) {
+      if (StringUtils.isNotBlank(checkResult)) { // 保证数据不为空
         //日志记录
         logger.error("Travel.ESRecord.sink.checkData.err{}", checkResult)
         return
       }
 
 
-      //请求id
+      // 请求id
       val sid = value.sid
 
       //索引名称、类型名称
@@ -71,8 +72,10 @@ class UserLogsClickESSink(indexName:String) extends RichSinkFunction[UserLogClic
    */
   def handleData(idxName :String, idxTypeName :String, esID :String,
                  value: java.util.Map[String,Object]): Unit ={
+    // 设置ES中的索引、类型、ID用于对数据进行检索使用
     val indexRequest = new IndexRequest(idxName, idxName, esID)
       .source(value)
+    // 加载数据到ES
     val response = transportClient.prepareUpdate(idxName, idxName, esID)
       .setRetryOnConflict(QRealTimeConstant.ES_RETRY_NUMBER)
       .setDoc(value)

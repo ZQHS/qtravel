@@ -76,7 +76,7 @@ object OrdersTopnStatisHandler {
       )
         .window(TumblingEventTimeWindows.of(Time.seconds(QRealTimeConstant.FLINK_WINDOW_SIZE * 3)))
         .allowedLateness(Time.seconds(QRealTimeConstant.FLINK_ALLOWED_LATENESS))
-        .process(new OrderTopNKeyedProcessFun(topN))
+        .process(new OrderTopNKeyedProcessFun(topN)) // 前30个
       topNDStream.print("order.topNDStream---:")
 
 
@@ -95,7 +95,7 @@ object OrdersTopnStatisHandler {
 
       //加入kafka摄入时间
       travelKafkaProducer.setWriteTimestampToKafka(true)
-      topNDStream.addSink(travelKafkaProducer)
+      // topNDStream.addSink(travelKafkaProducer)
 
       env.execute(appName)
     }catch {
@@ -111,7 +111,7 @@ object OrdersTopnStatisHandler {
 
     //kafka数据源topic
     //val fromTopic = QRealTimeConstant.TOPIC_ORDER_ODS
-    val fromTopic = "travel_ods_orders"
+    val fromTopic = "t_travel_ods"
 
     //统计结果输出
     //val toTopic = QRealTimeConstant.TOPIC_ORDER_DM_STATIS
